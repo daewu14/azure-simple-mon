@@ -1,0 +1,22 @@
+{
+  "name": "azure-simple-mon",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Azure DevOps Platform Sprint Dashboard / PBI Ready Release monitor",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "check": "node --check src/server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "azure-devops",
+    "dashboard",
+    "pbi",
+    "sprint",
+    "monitor"
+  ],
+  "license": "UNLICENSED"
+}
