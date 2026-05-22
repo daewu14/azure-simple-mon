@@ -16,3 +16,9 @@ yarn-error.log*
 .DS_Store
 .vscode/
 .idea/
+
+# Nuxt build artifacts (may contain secrets from env)
+.nuxt/
+.output/
+.nitro/
+dist/

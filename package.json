@@ -1,22 +1,22 @@
 {
   "name": "azure-simple-mon",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "description": "Azure DevOps Platform Sprint Dashboard / PBI Ready Release monitor",
   "scripts": {
-    "start": "node src/server.mjs",
-    "check": "node --check src/server.mjs"
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "start": "node .output/server/index.mjs",
+    "preview": "nuxt preview"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
-  "keywords": [
-    "azure-devops",
-    "dashboard",
-    "pbi",
-    "sprint",
-    "monitor"
-  ],
+  "dependencies": {
+    "@nuxt/ui": "^3.0.0",
+    "nuxt": "^3.17.0"
+  },
+  "keywords": ["azure-devops", "dashboard", "pbi", "sprint", "monitor"],
   "license": "UNLICENSED"
 }
