@@ -199,11 +199,30 @@ function reset() { searchTerm.value = ''; reasonFilter.value = 'all' }
 async function copyPbis() {
   const ado = `https://dev.azure.com/KiriminAja2026/Product%20Delivery/_workitems/edit/`
   const lines = ['PBI Ready Release', ...filteredPbis.value.map((p, i) => `${i + 1}. Product backlog Item ${p.pbiId}:(${ado}${p.pbiId}) ${p.pbiTitle}`)]
+  const text = lines.join('\n')
+
   try {
-    await navigator.clipboard.writeText(lines.join('\n'))
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      // Fallback for non-secure contexts (e.g. HTTP network IP)
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      textArea.style.position = 'fixed'
+      textArea.style.opacity = '0'
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      const success = document.execCommand('copy')
+      textArea.remove()
+      if (!success) throw new Error('Fallback copy failed')
+    }
     copying.value = true
     setTimeout(() => { copying.value = false }, 2000)
-  } catch {}
+  } catch (err) {
+    console.error('Failed to copy:', err)
+    alert('Gagal copy ke clipboard. Pastikan browser mendukung fitur copy atau gunakan localhost/HTTPS.')
+  }
 }
 
 watch(selectedTeam, () => { loadData() })
