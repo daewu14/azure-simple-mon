@@ -94,7 +94,7 @@
             </div>
           </div>
           <!-- Rows -->
-          <div v-for="item in ganttItems" :key="item.taskId" class="grid border-b border-slate-800/30 hover:bg-slate-800/20" style="grid-template-columns: 320px 1fr">
+          <div v-for="item in ganttItems" :key="item.taskId" :class="['grid border-b border-slate-800/30 hover:bg-orange-500/10 transition-colors cursor-default', item.groupBgClass]" style="grid-template-columns: 320px 1fr">
             <div class="px-4 py-3 border-r border-slate-800/40">
               <div class="font-bold text-sm text-slate-200 leading-snug">
                 <a :href="`${baseUrl}${item.taskId}`" target="_blank" class="text-orange-400 hover:text-orange-300">#{{ item.taskId }}</a>
@@ -167,8 +167,33 @@ const allStates = computed(() => [...new Set(allItems.value.map((i) => String(i.
 
 const ganttItems = computed(() => {
   const items = allItems.value.filter((i) => (i.segments as unknown[]).length > 0)
-  if (!selectedStates.value.length) return items
-  return items.filter((i) => selectedStates.value.includes(String(i.taskState)))
+  const filtered = selectedStates.value.length
+    ? items.filter((i) => selectedStates.value.includes(String(i.taskState)))
+    : items
+
+  // Sort by assignee so they are grouped together
+  const sorted = [...filtered].sort((a, b) => {
+    const aName = String(a.taskAssignedTo || 'Unassigned').toLowerCase()
+    const bName = String(b.taskAssignedTo || 'Unassigned').toLowerCase()
+    if (aName === bName) return String(a.taskId).localeCompare(String(b.taskId))
+    return aName.localeCompare(bName)
+  })
+
+  // Assign alternating background classes based on assignee group
+  let currentAssignee = null
+  let colorIndex = 0
+
+  return sorted.map((item) => {
+    const assignee = String(item.taskAssignedTo || 'Unassigned')
+    if (assignee !== currentAssignee) {
+      currentAssignee = assignee
+      colorIndex = 1 - colorIndex
+    }
+    return {
+      ...item,
+      groupBgClass: colorIndex === 0 ? 'bg-transparent' : 'bg-white/5'
+    }
+  })
 })
 
 const stateLegend = [
