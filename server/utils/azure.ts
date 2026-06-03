@@ -239,10 +239,17 @@ function workHoursBetween(startMs: number, endMs: number) {
   const cur = new Date(startMs); cur.setHours(0, 0, 0, 0)
   while (cur.getTime() < endMs) {
     if (isWorkday(cur)) {
-      const ws = new Date(cur); ws.setHours(9, 0, 0, 0)
-      const we = new Date(cur); we.setHours(17, 0, 0, 0)
-      const os = Math.max(startMs, ws.getTime()); const oe = Math.min(endMs, we.getTime())
-      if (oe > os) total += oe - os
+      // Pagi: 08:00 - 12:00
+      const ws1 = new Date(cur); ws1.setHours(8, 0, 0, 0)
+      const we1 = new Date(cur); we1.setHours(12, 0, 0, 0)
+      const os1 = Math.max(startMs, ws1.getTime()); const oe1 = Math.min(endMs, we1.getTime())
+      if (oe1 > os1) total += oe1 - os1
+
+      // Siang: 13:00 - 17:00
+      const ws2 = new Date(cur); ws2.setHours(13, 0, 0, 0)
+      const we2 = new Date(cur); we2.setHours(17, 0, 0, 0)
+      const os2 = Math.max(startMs, ws2.getTime()); const oe2 = Math.min(endMs, we2.getTime())
+      if (oe2 > os2) total += oe2 - os2
     }
     cur.setDate(cur.getDate() + 1)
   }
@@ -271,7 +278,7 @@ export async function getLastWeekProgress(sprintPath: string, teamName?: string)
   const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject]='${wiqlQuote(project)}' AND [System.WorkItemType]='Task' AND [System.IterationPath] UNDER '${wiqlQuote(sprintPath)}' ORDER BY [System.Id]`
   const wiqlData = await adoFetch(`https://dev.azure.com/${org}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=${ver}`, { method: 'POST', body: JSON.stringify({ query: wiql }) })
   const taskIds = ((wiqlData.workItems as Record<string, number>[]) || []).map((i) => i.id)
-  const fields = ['System.Id','System.Title','System.State','System.AssignedTo','System.Parent','System.ChangedDate']
+  const fields = ['System.Id','System.Title','System.State','System.AssignedTo','System.Parent','System.ChangedDate', 'Microsoft.VSTS.Scheduling.RemainingWork', 'Microsoft.VSTS.Scheduling.Effort', 'Microsoft.VSTS.Scheduling.StoryPoints']
   const taskItems = taskIds.length ? await batchWorkItems(taskIds, { fields }) : []
   const rangeStart = range.start.getTime(); const rangeEnd = range.end.getTime()
   const now = new Date().toISOString()
@@ -307,7 +314,19 @@ export async function getLastWeekProgress(sprintPath: string, teamName?: string)
 
     if (segments.length) {
       const durationHours = Math.round(segments.reduce((s, seg) => s + (seg.durationHours as number), 0) * 10) / 10
-      items.push({ taskId: task.id, taskTitle: tf['System.Title'] || '', taskState: tf['System.State'] || '', taskAssignedTo: assignedName(tf['System.AssignedTo']), parentId: tf['System.Parent'] || null, inProgressStart: (segments[0] as Record<string, unknown>).inProgressStart, inProgressEnd: (segments[segments.length - 1] as Record<string, unknown>).inProgressEnd, overlapStart: (segments[0] as Record<string, unknown>).overlapStart, overlapEnd: (segments[segments.length - 1] as Record<string, unknown>).overlapEnd, durationHours, progressSegments: segments, stillInProgress: (segments[segments.length - 1] as Record<string, unknown>).stillInProgress, warning: revisionWarning })
+      const effortPoint = Number(tf['Microsoft.VSTS.Scheduling.RemainingWork']) || Number(tf['Microsoft.VSTS.Scheduling.Effort']) || Number(tf['Microsoft.VSTS.Scheduling.StoryPoints']) || 0
+      let targetMaxHours = null
+      if (effortPoint === 1) targetMaxHours = 4
+      else if (effortPoint === 2) targetMaxHours = 8
+      else if (effortPoint === 3) targetMaxHours = 17.9 // < 18
+      else if (effortPoint === 5) targetMaxHours = 35.9 // < 4 hari (36)
+      else if (effortPoint === 8) targetMaxHours = 45 // 1 minggu (5 hari * 9 jam)
+      else if (effortPoint === 13) targetMaxHours = 90 // 2 minggu
+
+      let isWithinTarget = null
+      if (targetMaxHours !== null) isWithinTarget = durationHours <= targetMaxHours
+
+      items.push({ taskId: task.id, taskTitle: tf['System.Title'] || '', taskState: tf['System.State'] || '', taskAssignedTo: assignedName(tf['System.AssignedTo']), parentId: tf['System.Parent'] || null, inProgressStart: (segments[0] as Record<string, unknown>).inProgressStart, inProgressEnd: (segments[segments.length - 1] as Record<string, unknown>).inProgressEnd, overlapStart: (segments[0] as Record<string, unknown>).overlapStart, overlapEnd: (segments[segments.length - 1] as Record<string, unknown>).overlapEnd, durationHours, effortPoint, targetMaxHours, isWithinTarget, progressSegments: segments, stillInProgress: (segments[segments.length - 1] as Record<string, unknown>).stillInProgress, warning: revisionWarning })
     }
   }
 
@@ -328,19 +347,21 @@ export async function getLastWeekProgress(sprintPath: string, teamName?: string)
   const groups = new Map<string, Record<string, unknown>>()
   for (const item of items) {
     const gkey = String(item.parentId || `no-parent:${item.taskId}`)
-    if (!groups.has(gkey)) groups.set(gkey, { pbiId: item.parentId || null, pbiTitle: item.pbiTitle || '(Task tanpa Parent PBI)', pbiState: item.pbiState || '', pbiAssignedTo: item.pbiAssignedTo || '', taskCount: 0, stillInProgress: 0, durationHours: 0, firstOverlapStart: item.overlapStart || '', lastOverlapEnd: item.overlapEnd || '', tasks: [] })
+    if (!groups.has(gkey)) groups.set(gkey, { pbiId: item.parentId || null, pbiTitle: item.pbiTitle || '(Task tanpa Parent PBI)', pbiState: item.pbiState || '', pbiAssignedTo: item.pbiAssignedTo || '', taskCount: 0, stillInProgress: 0, durationHours: 0, effortPoint: 0, firstOverlapStart: item.overlapStart || '', lastOverlapEnd: item.overlapEnd || '', tasks: [] })
     const g = groups.get(gkey)!
     ;(g.tasks as unknown[]).push(item)
     g.taskCount = (g.taskCount as number) + 1
     g.stillInProgress = (g.stillInProgress as number) + (item.stillInProgress ? 1 : 0)
     g.durationHours = Math.round(((g.durationHours as number) + (item.durationHours as number)) * 10) / 10
+    g.effortPoint = (g.effortPoint as number) + (item.effortPoint as number)
     if (item.overlapStart && (!g.firstOverlapStart || new Date(item.overlapStart as string) < new Date(g.firstOverlapStart as string))) g.firstOverlapStart = item.overlapStart
     if (item.overlapEnd && (!g.lastOverlapEnd || new Date(item.overlapEnd as string) > new Date(g.lastOverlapEnd as string))) g.lastOverlapEnd = item.overlapEnd
   }
   const pbiGroups = [...groups.values()].sort((a, b) => String(a.pbiTitle).localeCompare(String(b.pbiTitle)))
 
   const totalHours = Math.round(items.reduce((s, i) => s + (i.durationHours as number), 0) * 10) / 10
-  const stats = { totalTasksScanned: taskItems.length, inProgressTasks: items.length, stillInProgress: items.filter((i) => i.stillInProgress).length, totalHours, avgHours: items.length ? Math.round(totalHours / items.length * 10) / 10 : 0, assignees: new Set(items.map((i) => i.taskAssignedTo).filter(Boolean)).size }
+  const totalEffort = items.reduce((s, i) => s + (i.effortPoint as number), 0)
+  const stats = { totalTasksScanned: taskItems.length, inProgressTasks: items.length, stillInProgress: items.filter((i) => i.stillInProgress).length, totalHours, avgHours: items.length ? Math.round(totalHours / items.length * 10) / 10 : 0, assignees: new Set(items.map((i) => i.taskAssignedTo).filter(Boolean)).size, totalEffort }
 
   const value = { generatedAt: new Date().toISOString(), team: t, sprintPath, range: { start: range.startIso, end: range.endIso, label: range.label }, items, pbiGroups, stats }
   cache.set(key, { at: Date.now(), value })

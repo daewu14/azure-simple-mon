@@ -8,7 +8,7 @@
       <h1 class="text-3xl md:text-4xl font-black text-white tracking-tight mb-2">Progress Minggu Lalu</h1>
       <p class="text-slate-400 text-sm leading-relaxed mb-4 max-w-2xl">
         Task yang berada di state <b class="text-slate-200">In Progress</b> selama minggu lalu (Senin–Minggu).
-        Durasi dihitung sebagai <b class="text-slate-200">jam kerja</b> Senin–Jumat 09:00–17:00.
+        Durasi dihitung sebagai <b class="text-slate-200">jam kerja</b> Senin–Jumat 08:00–17:00 (istirahat 12:00–13:00 tidak dihitung).
       </p>
       <div class="flex flex-wrap gap-2">
         <UBadge v-if="data" color="neutral" variant="soft">Team: <b class="ml-1">{{ data.team }}</b></UBadge>
@@ -19,8 +19,8 @@
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-5">
-      <div v-for="stat in progressStats" :key="stat.label" class="bg-slate-900/70 border border-slate-700/40 rounded-xl p-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-5">
+      <div v-for="stat in progressStats" :key="stat.label" class="bg-slate-900/70 border border-slate-700/40 rounded-xl p-3">
         <div class="text-2xl font-black text-white">{{ stat.value ?? '-' }}</div>
         <div class="text-slate-400 text-xs mt-1">{{ stat.label }}</div>
       </div>
@@ -102,7 +102,7 @@
                   <UBadge v-else color="success" variant="soft">Semua sudah pindah</UBadge>
                 </td>
                 <td class="p-3 text-slate-400 text-xs">{{ fmtDateTime(String(group.firstOverlapStart)) }} → {{ fmtDateTime(String(group.lastOverlapEnd)) }}</td>
-                <td class="p-3"><UBadge color="amber" variant="soft">{{ group.durationHours }} jam</UBadge></td>
+                <td class="p-3"><UBadge color="amber" variant="soft">{{ fmtDuration(group.durationHours) }}</UBadge></td>
               </tr>
               <!-- Task rows -->
               <template v-if="expandedGroups.has(gi)">
@@ -111,7 +111,7 @@
                   <td class="p-3" />
                   <td class="p-3" />
                   <td class="p-3" />
-                  <td class="p-3" />
+                  <td class="p-3 text-slate-400 text-xs">{{ task.taskAssignedTo || '-' }}</td>
                   <td class="p-3 pl-8">
                     <span class="text-slate-500 mr-1">↳</span>
                     <a :href="`${baseUrl}${task.taskId}`" target="_blank" class="text-orange-400 hover:text-orange-300 font-bold" @click.stop>#{{ task.taskId }}</a>
@@ -119,11 +119,18 @@
                   </td>
                   <td class="p-3">
                     <StateBadge :state="String(task.taskState || '')" />
-                    <UBadge v-if="task.stillInProgress" color="sky" variant="soft" class="ml-1 text-xs">Masih In Progress</UBadge>
-                    <UBadge v-else color="success" variant="soft" class="ml-1 text-xs">Sudah pindah</UBadge>
+                    <UBadge v-if="task.stillInProgress" color="sky" variant="soft" class="ml-1 text-xs mb-1">Masih In Progress</UBadge>
+                    <UBadge v-else color="success" variant="soft" class="ml-1 text-xs mb-1">Sudah pindah</UBadge>
+                    <div class="mt-1 flex items-center gap-1 flex-wrap">
+                      <span v-if="task.effortPoint" class="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300">Effort Point: {{ task.effortPoint }}</span>
+                      <template v-if="task.isWithinTarget !== null">
+                        <span v-if="task.isWithinTarget" class="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/20 text-blue-400">Dalam Target</span>
+                        <span v-else class="px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/20 text-red-400">Melebihi Target</span>
+                      </template>
+                    </div>
                   </td>
                   <td class="p-3 text-slate-400 text-xs">{{ fmtDateTime(String(task.overlapStart)) }} → {{ fmtDateTime(String(task.overlapEnd)) }}</td>
-                  <td class="p-3"><UBadge color="amber" variant="soft">{{ task.durationHours }} jam</UBadge></td>
+                  <td class="p-3"><UBadge color="amber" variant="soft">{{ fmtDuration(task.durationHours) }}</UBadge></td>
                 </tr>
               </template>
             </template>
@@ -181,6 +188,7 @@ const progressStats = computed(() => {
     { label: 'Total jam kerja', value: s.totalHours },
     { label: 'Avg jam / task', value: s.avgHours },
     { label: 'Assignee', value: s.assignees },
+    { label: 'Total Effort Point', value: s.totalEffort },
   ]
 })
 
@@ -192,6 +200,15 @@ function toggleGroup(gi: number) {
 function fmtDateTime(v: string) {
   if (!v) return '-'
   return new Date(v).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+function fmtDuration(hours: unknown) {
+  const h = Number(hours) || 0
+  if (h > 0 && h < 1) {
+    const m = Math.round(h * 60)
+    return `${h} jam (${m} menit)`
+  }
+  return `${h} jam`
 }
 
 async function loadProgress() {
