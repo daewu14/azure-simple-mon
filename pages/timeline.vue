@@ -3,68 +3,63 @@
     <useHead><title>Timeline Gantt Chart · Sprint Platform Dashboard</title></useHead>
 
     <!-- Hero -->
-    <div class="bg-slate-900/70 border border-slate-700/40 rounded-2xl p-7 mb-5">
-      <div class="text-orange-400 text-xs font-black uppercase tracking-widest mb-2">Azure DevOps · Product Delivery</div>
-      <h1 class="text-3xl md:text-4xl font-black text-white tracking-tight mb-2">Timeline Gantt Chart Task</h1>
-      <p class="text-slate-400 text-sm leading-relaxed mb-4 max-w-2xl">
-        Monitor perubahan state task: <b class="text-slate-200">In Progress</b> → <b class="text-slate-200">On Review QA</b> → <b class="text-slate-200">On Review Product</b> → <b class="text-slate-200">Release Plan</b> → <b class="text-slate-200">Released</b>.
-      </p>
-      <div class="flex flex-wrap gap-2">
-        <UBadge v-if="data" color="neutral" variant="soft">Team: <b class="ml-1">{{ data.team }}</b></UBadge>
-        <UBadge v-if="activeSprint" color="neutral" variant="soft">Sprint: <b class="ml-1">{{ activeSprint?.name }}</b></UBadge>
+    <UCard class="mb-4" :ui="{ body: { padding: 'p-5 sm:p-5' } }">
+      <div class="flex items-start justify-between gap-4 cursor-pointer select-none" @click="isHeroExpanded = !isHeroExpanded">
+        <div>
+          <div class="text-primary-500 text-[10px] font-bold uppercase tracking-widest mb-1.5">Azure DevOps · Product Delivery</div>
+          <h1 class="text-2xl font-bold text-white">Timeline Gantt Chart Task</h1>
+        </div>
+        <UButton
+          icon="i-heroicons-chevron-down"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          :class="['transition-transform duration-300', isHeroExpanded ? 'rotate-180' : '']"
+          @click.stop="isHeroExpanded = !isHeroExpanded"
+        />
       </div>
-      <UAlert v-if="data?.warning" color="warning" variant="soft" :description="String(data.warning)" class="mt-3" />
-    </div>
+      <div :class="['transition-all duration-300 ease-in-out overflow-hidden', isHeroExpanded ? 'max-h-[500px] opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0']">
+        <p class="text-slate-400 text-sm mb-3 max-w-2xl leading-relaxed">
+          Monitor perubahan state task: <b class="text-slate-200">In Progress</b> → <b class="text-slate-200">On Review QA</b> → <b class="text-slate-200">On Review Product</b> → <b class="text-slate-200">Release Plan</b> → <b class="text-slate-200">Released</b>.
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <UBadge v-if="data" color="neutral" variant="soft">Team: <b class="ml-1">{{ data.team }}</b></UBadge>
+          <UBadge v-if="activeSprint" color="neutral" variant="soft">Sprint: <b class="ml-1">{{ activeSprint?.name }}</b></UBadge>
+        </div>
+        <UAlert v-if="data?.warning" color="warning" variant="soft" :description="String(data.warning)" class="mt-3" />
+      </div>
+    </UCard>
 
     <!-- Toolbar -->
-    <div class="bg-slate-900/70 border border-slate-700/40 rounded-2xl px-5 py-3 mb-5">
+    <UCard class="mb-4" :ui="{ body: { padding: 'px-4 py-3 sm:px-4 sm:py-3' } }">
       <div class="flex items-center gap-3 flex-wrap">
         <div class="flex items-center gap-2 shrink-0">
           <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Sprint</span>
-          <select v-model="selectedSprintPath" class="select-dark w-auto" @change="loadTimeline">
-            <option v-for="s in sprintOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-          </select>
+          <USelect v-model="selectedSprintPath" :items="sprintOptions" @change="loadTimeline" />
         </div>
-        <div class="w-px h-5 bg-slate-700/50 shrink-0 hidden sm:block" />
-        <div class="flex items-center gap-2 shrink-0 relative" data-state-dropdown>
+        <div class="w-px h-5 bg-slate-800 shrink-0 hidden sm:block" />
+        <div class="flex items-center gap-2 shrink-0 relative">
           <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">State</span>
-          <button
-            type="button"
-            class="select-dark w-auto min-w-[160px] flex items-center justify-between gap-2"
-            style="background-image:none; padding-right:0.75rem;"
-            @click="stateDropdownOpen = !stateDropdownOpen"
-          >
-            <span class="truncate text-sm">{{ stateFilterSummary }}</span>
-            <svg class="w-4 h-4 flex-shrink-0 text-slate-400 transition-transform duration-150" :class="stateDropdownOpen ? 'rotate-180' : ''" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
-              <path fill-rule="evenodd" d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/>
-            </svg>
-          </button>
-          <div v-if="stateDropdownOpen" class="absolute top-full left-0 mt-1 z-50 bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl p-2 min-w-[200px]">
-            <div class="flex gap-2 pb-2 mb-2 border-b border-slate-700/40">
-              <button type="button" class="flex-1 text-xs font-bold text-slate-300 hover:text-white bg-slate-800/60 rounded-lg px-2 py-1.5" @click="selectAllStates">Pilih Semua</button>
-              <button type="button" class="flex-1 text-xs font-bold text-slate-300 hover:text-white bg-slate-800/60 rounded-lg px-2 py-1.5" @click="clearAllStates">Kosongkan</button>
-            </div>
-            <label v-for="state in allStates" :key="state" class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-800/60 cursor-pointer text-slate-200 text-sm">
-              <input type="checkbox" :value="state" :checked="selectedStates.includes(state)" class="accent-orange-500 w-4 h-4" @change="toggleState(state)" />
-              {{ state }}
-            </label>
-          </div>
+          <USelectMenu v-model="selectedStates" :items="allStates" multiple class="min-w-[160px]">
+            <template #label>
+              <span class="truncate">{{ stateFilterSummary }}</span>
+            </template>
+          </USelectMenu>
         </div>
         <div class="ml-auto shrink-0">
-          <UButton size="sm" variant="ghost" color="neutral" :loading="pending" @click="loadTimeline">
-            <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 mr-1" />
+          <UButton size="sm" variant="ghost" color="neutral" :loading="pending" icon="i-heroicons-arrow-path" @click="loadTimeline">
             Reload
           </UButton>
         </div>
       </div>
-    </div>
+    </UCard>
 
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-      <div v-for="stat in timelineStats" :key="stat.label" class="bg-slate-900/70 border border-slate-700/40 rounded-xl p-4">
-        <div class="text-2xl font-black text-white">{{ stat.value ?? '-' }}</div>
-        <div class="text-slate-400 text-xs mt-1">{{ stat.label }}</div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div v-for="stat in timelineStats" :key="stat.label" class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center transition-all hover:bg-slate-800/80">
+        <div class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2 leading-tight">{{ stat.label }}</div>
+        <div class="text-2xl font-black text-white leading-none">{{ stat.value ?? '-' }}</div>
       </div>
     </div>
 
@@ -76,48 +71,126 @@
       </span>
     </div>
 
-    <!-- Gantt -->
-    <div class="bg-slate-900/70 border border-slate-700/40 rounded-2xl overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-700/40">
-        <h2 class="font-black text-white">Gantt Timeline</h2>
-        <p class="text-slate-400 text-xs mt-1">Bar dari history/revision Azure DevOps setiap task.</p>
+    <!-- Gantt Inline -->
+    <div v-show="!isGanttFullscreen" class="bg-slate-900/60 ring-1 ring-slate-800/60 rounded-xl shadow-sm mb-4 flex flex-col">
+      <div class="px-4 py-3 sm:px-4 sm:py-3 border-b border-slate-800/60 flex items-center justify-between shrink-0">
+        <div>
+          <h2 class="font-bold text-white text-sm">Gantt Timeline</h2>
+          <p class="text-slate-400 text-xs mt-0.5">Bar dari history/revision Azure DevOps setiap task.</p>
+        </div>
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          icon="i-heroicons-arrows-pointing-out"
+          @click="isGanttFullscreen = true"
+        />
       </div>
-      <div v-if="pending" class="p-10 text-center text-slate-400">Loading timeline...</div>
-      <div v-else-if="!ganttItems.length" class="p-10 text-center text-slate-400">Belum ada task dengan history timeline untuk filter yang dipilih.</div>
-      <div v-else class="overflow-auto max-h-[640px]">
-        <div class="min-w-[1000px]">
-          <!-- Scale header -->
-          <div class="grid border-b border-slate-800/40 bg-slate-950/80 sticky top-0 z-10" style="grid-template-columns: 320px 1fr">
-            <div class="px-4 py-3 text-slate-400 text-xs font-black uppercase tracking-wide border-r border-slate-800/40">Task</div>
-            <div class="relative px-4 py-3 min-h-[44px]">
-              <span v-for="(tick, i) in ticks" :key="i" class="gantt-tick" :style="{ left: tick.pct + '%' }">{{ tick.label }}</span>
-            </div>
-          </div>
-          <!-- Rows -->
-          <div v-for="item in ganttItems" :key="item.taskId" :class="['grid border-b border-slate-800/30 hover:bg-orange-500/10 transition-colors cursor-default', item.groupBgClass]" style="grid-template-columns: 320px 1fr">
-            <div class="px-4 py-3 border-r border-slate-800/40">
-              <div class="font-bold text-sm text-slate-200 leading-snug">
-                <a :href="`${baseUrl}${item.taskId}`" target="_blank" class="text-orange-400 hover:text-orange-300">#{{ item.taskId }}</a>
-                {{ item.taskTitle }}
+
+      <div class="flex-1 min-h-0 flex flex-col">
+        <div v-if="pending" class="p-10 text-center text-slate-400">Loading timeline...</div>
+        <div v-else-if="!ganttItems.length" class="p-10 text-center text-slate-400">Belum ada task dengan history timeline untuk filter yang dipilih.</div>
+        <div v-else class="overflow-auto flex-1 min-h-0 max-h-[640px]">
+          <div class="min-w-[1000px]">
+            <!-- Scale header -->
+            <div class="grid border-b border-slate-800/40 bg-slate-950/80 sticky top-0 z-10" style="grid-template-columns: 320px 1fr">
+              <div class="px-4 py-2 text-slate-400 text-xs font-bold uppercase tracking-wide border-r border-slate-800/40">Task</div>
+              <div class="relative px-4 py-2 min-h-[36px]">
+                <span v-for="(tick, i) in ticks" :key="i" class="gantt-tick" :style="{ left: tick.pct + '%' }">{{ tick.label }}</span>
               </div>
-              <div class="text-slate-500 text-xs mt-1">{{ item.taskAssignedTo || '-' }} · {{ item.taskState || '-' }}<span v-if="item.cycleDays != null"> · {{ item.cycleDays }}d cycle</span></div>
             </div>
-            <div class="relative min-h-[56px] px-4 py-3">
-              <div
-                v-for="(seg, si) in item.segments"
-                :key="si"
-                class="gantt-bar"
-                :class="`gantt-bar-${stateClass(seg.state)}`"
-                :style="{ left: segLeft(seg) + '%', width: Math.max(0.5, segWidth(seg)) + '%' }"
-                :title="`${seg.state}: ${fmtDate(seg.start)} - ${fmtDate(seg.end)}`"
-              >
-                <span class="gantt-bar-label">{{ seg.state }}</span>
+            <!-- Rows -->
+            <div v-for="item in ganttItems" :key="item.taskId" :class="['grid border-b border-slate-800/30 hover:bg-primary-500/10 transition-colors cursor-default', item.groupBgClass]" style="grid-template-columns: 320px 1fr">
+              <div class="px-3 py-1.5 border-r border-slate-800/40">
+                <div class="font-medium text-xs text-slate-200 leading-snug">
+                  <a :href="`${baseUrl}${item.taskId}`" target="_blank" class="text-primary-400 hover:text-primary-300">#{{ item.taskId }}</a>
+                  {{ item.taskTitle }}
+                </div>
+                <div class="text-slate-500 text-[10px] mt-0.5">{{ item.taskAssignedTo || '-' }} · {{ item.taskState || '-' }}<span v-if="item.cycleDays != null"> · {{ item.cycleDays }}d cycle</span></div>
+              </div>
+              <div class="relative min-h-[32px] px-3 py-1.5">
+                <div
+                  v-for="(seg, si) in item.segments"
+                  :key="si"
+                  class="gantt-bar"
+                  :class="`gantt-bar-${stateClass(seg.state)}`"
+                  :style="{ left: segLeft(seg) + '%', width: Math.max(0.5, segWidth(seg)) + '%' }"
+                  :title="`${seg.state}: ${fmtDate(seg.start)} - ${fmtDate(seg.end)}`"
+                >
+                  <span class="gantt-bar-label">{{ seg.state }}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Fullscreen Mode Overlay -->
+    <Teleport to="body">
+      <transition
+        enter-active-class="transition duration-150 ease-out"
+        leave-active-class="transition duration-100 ease-in"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div v-if="isGanttFullscreen" class="fixed inset-0 z-[100] flex flex-col bg-slate-950">
+          <div class="px-4 py-3 sm:px-4 sm:py-3 border-b border-slate-800/60 flex items-center justify-between shrink-0">
+            <div>
+              <h2 class="font-bold text-white text-sm">Gantt Timeline</h2>
+              <p class="text-slate-400 text-xs mt-0.5">Bar dari history/revision Azure DevOps setiap task.</p>
+            </div>
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              icon="i-heroicons-arrows-pointing-in"
+              @click="isGanttFullscreen = false"
+            />
+          </div>
+
+          <div class="flex-1 min-h-0 flex flex-col">
+            <div v-if="pending" class="p-10 text-center text-slate-400">Loading timeline...</div>
+            <div v-else-if="!ganttItems.length" class="p-10 text-center text-slate-400">Belum ada task dengan history timeline untuk filter yang dipilih.</div>
+            <div v-else class="overflow-auto flex-1 h-full min-h-0">
+              <div class="min-w-[1000px]">
+                <!-- Scale header -->
+                <div class="grid border-b border-slate-800/40 bg-slate-950/80 sticky top-0 z-10" style="grid-template-columns: 320px 1fr">
+                  <div class="px-4 py-2 text-slate-400 text-xs font-bold uppercase tracking-wide border-r border-slate-800/40">Task</div>
+                  <div class="relative px-4 py-2 min-h-[36px]">
+                    <span v-for="(tick, i) in ticks" :key="i" class="gantt-tick" :style="{ left: tick.pct + '%' }">{{ tick.label }}</span>
+                  </div>
+                </div>
+                <!-- Rows -->
+                <div v-for="item in ganttItems" :key="item.taskId" :class="['grid border-b border-slate-800/30 hover:bg-primary-500/10 transition-colors cursor-default', item.groupBgClass]" style="grid-template-columns: 320px 1fr">
+                  <div class="px-3 py-1.5 border-r border-slate-800/40">
+                    <div class="font-medium text-xs text-slate-200 leading-snug">
+                      <a :href="`${baseUrl}${item.taskId}`" target="_blank" class="text-primary-400 hover:text-primary-300">#{{ item.taskId }}</a>
+                      {{ item.taskTitle }}
+                    </div>
+                    <div class="text-slate-500 text-[10px] mt-0.5">{{ item.taskAssignedTo || '-' }} · {{ item.taskState || '-' }}<span v-if="item.cycleDays != null"> · {{ item.cycleDays }}d cycle</span></div>
+                  </div>
+                  <div class="relative min-h-[32px] px-3 py-1.5">
+                    <div
+                      v-for="(seg, si) in item.segments"
+                      :key="si"
+                      class="gantt-bar"
+                      :class="`gantt-bar-${stateClass(seg.state)}`"
+                      :style="{ left: segLeft(seg) + '%', width: Math.max(0.5, segWidth(seg)) + '%' }"
+                      :title="`${seg.state}: ${fmtDate(seg.start)} - ${fmtDate(seg.end)}`"
+                    >
+                      <span class="gantt-bar-label">{{ seg.state }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </Teleport>
 
     <div class="text-slate-600 text-xs text-right mt-3">Generated: {{ data?.generatedAt || '-' }}</div>
   </div>
@@ -134,33 +207,44 @@ const selectedSprintPath = ref('')
 const data = ref<Record<string, unknown> | null>(null)
 const pending = ref(true)
 const selectedStates = ref<string[]>([])
-const stateDropdownOpen = ref(false)
 
 const stateFilterSummary = computed(() => {
   if (!selectedStates.value.length || selectedStates.value.length === allStates.value.length) return 'Semua State'
-  if (selectedStates.value.length === 1) return selectedStates.value[0]
-  return `${selectedStates.value.length} State dipilih`
+  return `${selectedStates.value.length} state dipilih`
 })
-
-function toggleState(state: string) {
-  const idx = selectedStates.value.indexOf(state)
-  if (idx === -1) selectedStates.value.push(state)
-  else selectedStates.value.splice(idx, 1)
-}
-function selectAllStates() { selectedStates.value = [...allStates.value] }
-function clearAllStates() { selectedStates.value = [] }
-
-// Close dropdown when clicking outside
-if (import.meta.client) {
-  document.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement
-    if (!target.closest('[data-state-dropdown]')) stateDropdownOpen.value = false
-  })
-}
 
 const activeSprint = computed(() => sprints.value.find((s) => s.path === selectedSprintPath.value))
 
 const sprintOptions = computed(() => sprints.value.map((s) => ({ label: s.name + (s.timeFrame ? ` (${s.timeFrame})` : ''), value: s.path })))
+
+const isHeroExpanded = ref(true)
+const isGanttFullscreen = ref(false)
+
+onBeforeRouteLeave(() => {
+  if (isGanttFullscreen.value) {
+    return false // Mencegah navigasi back router, tidak melakukan aksi apapun
+  }
+})
+
+const handleEscape = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && isGanttFullscreen.value) {
+    isGanttFullscreen.value = false
+  }
+}
+
+onMounted(() => {
+  const stored = localStorage.getItem('timelineHeroExpanded')
+  if (stored !== null) isHeroExpanded.value = stored === 'true'
+  
+  document.addEventListener('keydown', handleEscape)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleEscape)
+})
+watch(isHeroExpanded, (val) => {
+  localStorage.setItem('timelineHeroExpanded', String(val))
+})
 
 const allItems = computed(() => (data.value?.items as Record<string, unknown>[]) || [])
 const allStates = computed(() => [...new Set(allItems.value.map((i) => String(i.taskState || '')).filter(Boolean))])
