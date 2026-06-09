@@ -3,119 +3,139 @@
     <useHead><title>PBI Ready Release · Sprint Platform Dashboard</title></useHead>
 
     <!-- Hero + Stats -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
-      <div class="lg:col-span-2 bg-slate-900/70 border border-slate-700/40 rounded-2xl p-7">
-        <div class="text-orange-400 text-xs font-black uppercase tracking-widest mb-2">Azure DevOps · Product Delivery</div>
-        <h1 class="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">PBI Ready Release</h1>
-        <p class="text-slate-400 text-sm leading-relaxed mb-4 max-w-xl">
-          List Product Backlog Item yang siap release: PBI Resolved, task On Review Product, atau task Release Plan.
-          Klik baris PBI untuk expand/collapse child task.
-        </p>
-        <div class="flex flex-wrap gap-2">
-          <UBadge v-if="data" color="neutral" variant="soft">Team: <b class="ml-1">{{ data.team }}</b></UBadge>
-          <UBadge v-if="activeSprint" color="neutral" variant="soft">Sprint: <b class="ml-1">{{ activeSprint?.name }}</b></UBadge>
-          <UBadge v-if="data?.stats" color="neutral" variant="soft">PBI in sprint: <b class="ml-1">{{ data.stats.pbiInSprint }}</b></UBadge>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 items-start">
+      <UCard class="lg:col-span-2" :ui="{ body: { padding: 'p-5 sm:p-5' } }">
+        <div class="flex items-start justify-between gap-4 cursor-pointer select-none" @click="isHeroExpanded = !isHeroExpanded">
+          <div>
+            <div class="text-primary-500 text-[10px] font-bold uppercase tracking-widest mb-1.5">Azure DevOps · Product Delivery</div>
+            <h1 class="text-2xl font-bold text-white">PBI Ready Release</h1>
+          </div>
+          <UButton
+            icon="i-heroicons-chevron-down"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            :class="['transition-transform duration-300', isHeroExpanded ? 'rotate-180' : '']"
+            @click.stop="isHeroExpanded = !isHeroExpanded"
+          />
         </div>
-        <UAlert v-if="data?.warning" color="warning" variant="soft" :description="data.warning" class="mt-3" />
-      </div>
+        <div :class="['transition-all duration-300 ease-in-out overflow-hidden', isHeroExpanded ? 'max-h-[500px] opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0']">
+          <p class="text-slate-400 text-sm mb-3 max-w-xl leading-relaxed">
+            List Product Backlog Item yang siap release: PBI Resolved, task On Review Product, atau task Release Plan.
+            Klik baris PBI untuk expand/collapse child task.
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <UBadge v-if="data" color="neutral" variant="soft">Team: <b class="ml-1">{{ data.team }}</b></UBadge>
+            <UBadge v-if="activeSprint" color="neutral" variant="soft">Sprint: <b class="ml-1">{{ activeSprint?.name }}</b></UBadge>
+            <UBadge v-if="data?.stats" color="neutral" variant="soft">PBI in sprint: <b class="ml-1">{{ data.stats.pbiInSprint }}</b></UBadge>
+          </div>
+          <UAlert v-if="data?.warning" color="warning" variant="soft" :description="data.warning" class="mt-3" />
+        </div>
+      </UCard>
 
-      <div class="grid grid-cols-2 gap-3">
-        <div v-for="stat in stats" :key="stat.label" class="bg-slate-800/60 border border-slate-700/40 rounded-xl p-4">
-          <div class="text-2xl font-black text-white">{{ stat.value }}</div>
-          <div class="text-slate-400 text-xs mt-1">{{ stat.label }}</div>
+      <div class="grid grid-cols-2 gap-3 h-fit">
+        <div v-for="stat in stats" :key="stat.label" class="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-center transition-all hover:bg-slate-800/80">
+          <div class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2 leading-tight">{{ stat.label }}</div>
+          <div class="text-2xl font-black text-white leading-none">{{ stat.value ?? '-' }}</div>
         </div>
       </div>
     </div>
 
 
     <!-- Toolbar -->
-    <div class="bg-slate-900/70 border border-slate-700/40 rounded-2xl px-5 py-3 mb-5">
+    <UCard class="mb-4" :ui="{ body: { padding: 'px-4 py-3 sm:px-4 sm:py-3' } }">
       <div class="flex items-center gap-3 flex-wrap">
         <div class="flex items-center gap-2 shrink-0">
           <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Sprint</span>
-          <select v-model="selectedSprintPath" class="select-dark w-auto" @change="loadData">
-            <option v-for="s in sprintOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-          </select>
+          <USelect v-model="selectedSprintPath" :items="sprintOptions" @change="loadData" />
         </div>
-        <div class="w-px h-5 bg-slate-700/50 shrink-0 hidden sm:block" />
-        <UInput v-model="searchTerm" type="search" placeholder="Cari ID, title, assignee, state, reason..." size="sm" class="flex-1 min-w-[180px]" />
-        <div class="w-px h-5 bg-slate-700/50 shrink-0 hidden sm:block" />
+        <div class="w-px h-5 bg-slate-800 shrink-0 hidden sm:block" />
+        <UInput v-model="searchTerm" icon="i-heroicons-magnifying-glass" type="search" placeholder="Cari ID, title, assignee..." size="sm" class="flex-1 min-w-[180px]" />
+        <div class="w-px h-5 bg-slate-800 shrink-0 hidden sm:block" />
         <div class="flex items-center gap-2 shrink-0">
           <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Reason</span>
-          <select v-model="reasonFilter" class="select-dark w-auto">
-            <option v-for="o in reasonOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-          </select>
+          <USelect v-model="reasonFilter" :items="reasonOptions" />
         </div>
         <div class="flex items-center gap-2 ml-auto shrink-0">
           <UButton size="sm" variant="ghost" color="neutral" @click="reset">Reset</UButton>
-          <UButton size="sm" color="primary" :loading="copying" @click="copyPbis">
-            <UIcon name="i-heroicons-clipboard-document" class="w-3.5 h-3.5 mr-1" />
+          <UButton size="sm" color="primary" :loading="copying" icon="i-heroicons-clipboard-document" @click="copyPbis">
             Copy PBI List
           </UButton>
         </div>
       </div>
-    </div>
+    </UCard>
 
 
     <!-- Table -->
-    <div class="bg-slate-900/70 border border-slate-700/40 rounded-2xl overflow-hidden">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-700/40">
-        <h2 class="font-black text-white text-base">PBI Ready Release</h2>
-        <span class="text-slate-400 text-sm">{{ filteredPbis.length }} PBI shown</span>
-      </div>
-
-      <div v-if="pending" class="p-10 text-center text-slate-400">Loading data...</div>
+    <UCard :ui="{ body: { padding: 'p-0 sm:p-0' }, header: { padding: 'px-4 py-3 sm:px-4 sm:py-3' } }">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <h2 class="font-bold text-white text-sm">PBI Ready Release</h2>
+          <span class="text-slate-400 text-xs">{{ filteredPbis.length }} PBI shown</span>
+        </div>
+      </template>      <div v-if="pending" class="p-10 text-center text-slate-400">Loading data...</div>
       <div v-else-if="!filteredPbis.length" class="p-10 text-center text-slate-400">Tidak ada PBI Ready Release.</div>
       <div v-else class="overflow-x-auto">
         <table class="w-full text-sm min-w-[1100px]">
           <thead>
-            <tr class="border-b border-slate-700/40 bg-slate-950/60">
-              <th class="w-12 p-3" />
-              <th class="p-3 text-left text-slate-400 text-xs font-black uppercase tracking-wide">PBI</th>
-              <th class="p-3 text-left text-slate-400 text-xs font-black uppercase tracking-wide">PBI Title</th>
-              <th class="p-3 text-left text-slate-400 text-xs font-black uppercase tracking-wide">State</th>
-              <th class="p-3 text-left text-slate-400 text-xs font-black uppercase tracking-wide">Assigned To</th>
-              <th class="p-3 text-left text-slate-400 text-xs font-black uppercase tracking-wide">Reason</th>
-              <th class="p-3 text-left text-slate-400 text-xs font-black uppercase tracking-wide">Tasks</th>
-              <th class="p-3 text-left text-slate-400 text-xs font-black uppercase tracking-wide">On Review</th>
-              <th class="p-3 text-left text-slate-400 text-xs font-black uppercase tracking-wide">Release Plan</th>
+            <tr class="border-b border-slate-800 bg-slate-900/50">
+              <th class="w-10 px-3 py-2" />
+              <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">PBI</th>
+              <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">PBI Title</th>
+              <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">State</th>
+              <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">Assigned To</th>
+              <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">Reason</th>
+              <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">Tasks</th>
+              <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">On Review</th>
+              <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">Release Plan</th>
             </tr>
           </thead>
           <tbody>
             <template v-for="pbi in filteredPbis" :key="pbi.pbiId">
               <tr
-                class="border-b border-slate-800/40 cursor-pointer hover:bg-orange-500/5 transition-colors"
-                :class="expandedPbis.has(pbi.pbiId) ? 'bg-orange-500/5' : ''"
+                class="border-b border-slate-800/60 cursor-pointer hover:bg-primary-500/5 transition-colors"
+                :class="expandedPbis.has(pbi.pbiId) ? 'bg-primary-500/5' : ''"
                 @click="togglePbi(pbi.pbiId)"
               >
-                <td class="p-3 text-center">
-                  <span class="inline-block transition-transform duration-150 text-slate-400 font-black" :class="expandedPbis.has(pbi.pbiId) ? 'rotate-90' : ''">›</span>
+                <td class="px-3 py-2 text-center">
+                  <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 transition-transform duration-150 text-slate-400" :class="expandedPbis.has(pbi.pbiId) ? 'rotate-90' : ''" />
                 </td>
-                <td class="p-3">
-                  <a :href="`${baseWorkItemUrl}${pbi.pbiId}`" target="_blank" class="text-orange-400 hover:text-orange-300 font-bold" @click.stop>#{{ pbi.pbiId }}</a>
+                <td class="px-3 py-2">
+                  <a :href="`${baseWorkItemUrl}${pbi.pbiId}`" target="_blank" class="text-primary-400 hover:text-primary-300 font-bold" @click.stop>#{{ pbi.pbiId }}</a>
                 </td>
-                <td class="p-3 text-slate-200 max-w-xs">{{ pbi.pbiTitle }}</td>
-                <td class="p-3"><StateBadge :state="pbi.pbiState" /></td>
-                <td class="p-3 text-slate-300">{{ pbi.pbiAssignedTo || '-' }}</td>
-                <td class="p-3"><ReasonBadge :reason="pbi.reason" /></td>
-                <td class="p-3"><UBadge color="sky" variant="soft">{{ pbi.taskCount }}</UBadge></td>
-                <td class="p-3"><UBadge color="sky" variant="soft">{{ pbi.reviewTaskCount }}</UBadge></td>
-                <td class="p-3"><UBadge color="sky" variant="soft">{{ pbi.releasePlanTaskCount }}</UBadge></td>
+                <td class="px-3 py-2 text-slate-200 max-w-xs">{{ pbi.pbiTitle }}</td>
+                <td class="px-3 py-2"><StateBadge :state="pbi.pbiState" /></td>
+                <td class="px-3 py-2 text-slate-300 text-xs">{{ pbi.pbiAssignedTo || '-' }}</td>
+                <td class="px-3 py-2"><ReasonBadge :reason="pbi.reason" /></td>
+                <td class="px-3 py-2 text-xs">
+                  <UBadge color="neutral" variant="soft">{{ pbi.tasks.length }}</UBadge>
+                </td>
+                <td class="px-3 py-2 text-xs">
+                  <UBadge v-if="pbi.onReviewProductTasks.length" color="primary" variant="soft">{{ pbi.onReviewProductTasks.length }}</UBadge>
+                  <span v-else class="text-slate-600">-</span>
+                </td>
+                <td class="px-3 py-2 text-xs">
+                  <UBadge v-if="pbi.releasePlanTasks.length" color="purple" variant="soft">{{ pbi.releasePlanTasks.length }}</UBadge>
+                  <span v-else class="text-slate-600">-</span>
+                </td>
               </tr>
-              <!-- Task expand row -->
-              <tr v-if="expandedPbis.has(pbi.pbiId)" :key="`${pbi.pbiId}-tasks`" class="bg-slate-950/40">
-                <td colspan="9" class="px-6 py-4">
-                  <div class="text-slate-400 text-xs font-black uppercase tracking-wider mb-3">Task dari PBI #{{ pbi.pbiId }}</div>
-                  <div v-if="!pbi.tasks?.length" class="text-slate-500 text-sm italic border border-dashed border-slate-700/50 rounded-xl p-4">
-                    Belum ada child task untuk PBI ini.
-                  </div>
-                  <div v-else class="grid gap-2">
-                    <div v-for="task in pbi.tasks" :key="task.taskId" class="grid grid-cols-[120px_1fr_160px_200px] gap-3 items-start p-3 bg-slate-900/60 border border-slate-700/30 rounded-xl">
-                      <a :href="`${baseWorkItemUrl}${task.taskId}`" target="_blank" class="text-orange-400 hover:text-orange-300 font-bold text-sm" @click.stop>#{{ task.taskId }}</a>
-                      <div class="text-slate-200 text-sm leading-snug">{{ task.taskTitle }}</div>
-                      <StateBadge :state="task.taskState" />
-                      <div class="text-slate-300 text-sm">{{ task.taskAssignedTo || '-' }}</div>
-                    </div>
+              <!-- Child Tasks (Expanded) -->
+              <tr v-if="expandedPbis.has(pbi.pbiId)" class="bg-slate-900/40 border-b border-slate-800/60">
+                <td colspan="9" class="p-0">
+                  <div class="px-8 py-3 bg-slate-950/30">
+                    <table class="w-full text-xs">
+                      <tbody>
+                        <tr v-for="task in pbi.tasks" :key="task.taskId" class="border-b border-slate-800/40 last:border-0 hover:bg-slate-800/30 transition-colors">
+                          <td class="px-3 py-2 w-24">
+                            <span class="text-slate-500 mr-1">↳</span>
+                            <a :href="`${baseWorkItemUrl}${task.taskId}`" target="_blank" class="text-primary-400 hover:text-primary-300 font-medium" @click.stop>#{{ task.taskId }}</a>
+                          </td>
+                          <td class="px-3 py-2 text-slate-300">{{ task.taskTitle }}</td>
+                          <td class="px-3 py-2 w-32"><StateBadge :state="task.taskState" class="scale-90 origin-left" /></td>
+                          <td class="px-3 py-2 w-48 text-slate-400">{{ task.taskAssignedTo || '-' }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </td>
               </tr>
@@ -123,7 +143,7 @@
           </tbody>
         </table>
       </div>
-    </div>
+    </UCard>
 
     <div class="text-slate-600 text-xs text-right mt-3">Generated: {{ data?.generatedAt || '-' }}</div>
   </div>
@@ -155,6 +175,15 @@ const reasonOptions = [
 ]
 
 const sprintOptions = computed(() => sprints.value.map((s) => ({ label: s.name + (s.timeFrame ? ` (${s.timeFrame})` : ''), value: s.path })))
+
+const isHeroExpanded = ref(true)
+onMounted(() => {
+  const stored = localStorage.getItem('dashboardHeroExpanded')
+  if (stored !== null) isHeroExpanded.value = stored === 'true'
+})
+watch(isHeroExpanded, (val) => {
+  localStorage.setItem('dashboardHeroExpanded', String(val))
+})
 
 const pbis = computed(() => (data.value?.pbis as Record<string, unknown>[]) || [])
 
