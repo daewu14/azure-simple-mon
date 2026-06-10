@@ -45,7 +45,23 @@
             </template>
           </USelectMenu>
         </div>
-        <div class="ml-auto shrink-0">
+        
+        <div class="flex items-center gap-2 shrink-0 relative">
+          <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Assignee</span>
+          <USelectMenu v-model="selectedAssignees" :items="allAssignees" multiple class="min-w-[160px]">
+            <template #label>
+              <span class="truncate">{{ assigneeFilterSummary }}</span>
+            </template>
+          </USelectMenu>
+        </div>
+        <div class="w-px h-5 bg-slate-800 shrink-0 hidden sm:block" />
+
+        <div class="shrink-0 mr-auto">
+          <UButton size="sm" variant="ghost" color="red" icon="i-heroicons-x-mark" @click="clearFilters" v-if="selectedStates.length || selectedAssignees.length">
+            Clear
+          </UButton>
+        </div>
+<div class="shrink-0">
           <UButton size="sm" variant="ghost" color="neutral" :loading="pending" icon="i-heroicons-arrow-path" @click="loadTimeline">
             Reload
           </UButton>
@@ -150,6 +166,22 @@
             />
           </div>
 
+          <div class="px-4 py-2 bg-slate-900 border-b border-slate-800/60 flex items-center gap-3 flex-wrap shrink-0">
+            <div class="flex items-center gap-2 shrink-0 relative">
+              <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Assignee</span>
+              <USelectMenu v-model="selectedAssignees" :items="allAssignees" multiple class="min-w-[160px]">
+                <template #label><span class="truncate">{{ assigneeFilterSummary }}</span></template>
+              </USelectMenu>
+            </div>
+            <div class="flex items-center gap-2 shrink-0 relative">
+              <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">State</span>
+              <USelectMenu v-model="selectedStates" :items="allStates" multiple class="min-w-[160px]">
+                <template #label><span class="truncate">{{ stateFilterSummary }}</span></template>
+              </USelectMenu>
+            </div>
+            <UButton size="sm" variant="ghost" color="red" icon="i-heroicons-x-mark" @click="clearFilters" v-if="selectedStates.length || selectedAssignees.length">Clear</UButton>
+          </div>
+
           <div class="flex-1 min-h-0 flex flex-col">
             <div v-if="pending" class="p-10 text-center text-slate-400">Loading timeline...</div>
             <div v-else-if="!ganttItems.length" class="p-10 text-center text-slate-400">Belum ada task dengan history timeline untuk filter yang dipilih.</div>
@@ -206,10 +238,16 @@ const selectedSprintPath = ref('')
 const data = ref<Record<string, unknown> | null>(null)
 const pending = ref(true)
 const selectedStates = ref<string[]>([])
+const selectedAssignees = ref<string[]>([])
 
 const stateFilterSummary = computed(() => {
   if (!selectedStates.value.length || selectedStates.value.length === allStates.value.length) return 'Semua State'
   return `${selectedStates.value.length} state dipilih`
+})
+
+const assigneeFilterSummary = computed(() => {
+  if (!selectedAssignees.value.length || selectedAssignees.value.length === allAssignees.value.length) return 'Semua Assignee'
+  return `${selectedAssignees.value.length} assignee dipilih`
 })
 
 const activeSprint = computed(() => sprints.value.find((s) => s.path === selectedSprintPath.value))
@@ -218,6 +256,11 @@ const sprintOptions = computed(() => sprints.value.map((s) => ({ label: s.name +
 
 const isHeroExpanded = ref(true)
 const isGanttFullscreen = ref(false)
+
+function clearFilters() {
+  selectedStates.value = []
+  selectedAssignees.value = []
+}
 
 onBeforeRouteLeave(() => {
   if (isGanttFullscreen.value) {
@@ -247,12 +290,13 @@ watch(isHeroExpanded, (val) => {
 
 const allItems = computed(() => (data.value?.items as Record<string, unknown>[]) || [])
 const allStates = computed(() => [...new Set(allItems.value.map((i) => String(i.taskState || '')).filter(Boolean))])
+const allAssignees = computed(() => [...new Set(allItems.value.map((i) => String(i.taskAssignedTo || '')).filter(Boolean))].sort())
 
 const ganttItems = computed(() => {
   const items = allItems.value.filter((i) => (i.segments as unknown[]).length > 0)
-  const filtered = selectedStates.value.length
-    ? items.filter((i) => selectedStates.value.includes(String(i.taskState)))
-    : items
+  let filtered = items
+  if (selectedStates.value.length) filtered = filtered.filter(i => selectedStates.value.includes(String(i.taskState)))
+  if (selectedAssignees.value.length) filtered = filtered.filter(i => selectedAssignees.value.includes(String(i.taskAssignedTo)))
 
   // Sort by assignee so they are grouped together
   const sorted = [...filtered].sort((a, b) => {
