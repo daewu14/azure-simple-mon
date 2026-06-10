@@ -70,6 +70,54 @@ npm start        # Jalankan production build (.output/server/index.mjs)
 
 Dev server default: **http://localhost:5762**
 
+## CI/CD Release Deployment
+
+Repository ini punya GitHub Actions workflow `.github/workflows/release-deploy.yml` yang otomatis build dan deploy ke server production saat release tag dibuat.
+
+Trigger deploy:
+
+- push tag dengan format `v*`, contoh `v2.0.1`
+- atau publish GitHub Release dengan tag `v*`
+
+Production target default:
+
+- URL app: `http://129.226.91.201:5762`
+- server user: `ubuntu`
+- app dir: `/home/ubuntu/workspace/azure-simple-mon`
+- systemd service: `delivery-kpi-dashboard.service`
+
+GitHub secrets yang wajib diset:
+
+| Secret | Deskripsi |
+|---|---|
+| `DEPLOY_SSH_KEY` | Private SSH key untuk login ke server deploy |
+
+GitHub secrets opsional:
+
+| Secret | Default | Deskripsi |
+|---|---|---|
+| `DEPLOY_HOST` | `129.226.91.201` | Host/IP server deploy |
+| `DEPLOY_USER` | `ubuntu` | User SSH server deploy |
+| `DEPLOY_PORT` | `22` | Port SSH server deploy |
+
+GitHub variables opsional:
+
+| Variable | Default | Deskripsi |
+|---|---|---|
+| `APP_URL` | `http://129.226.91.201:5762` | URL public untuk verifikasi deploy |
+| `DEPLOY_APP_DIR` | `/home/ubuntu/workspace/azure-simple-mon` | Path repo app di server |
+| `DEPLOY_SERVICE_NAME` | `delivery-kpi-dashboard.service` | Nama systemd service |
+| `DEPLOY_HEALTHCHECK_URL` | `http://127.0.0.1:5762/api/test` | Healthcheck lokal setelah restart |
+
+Contoh release:
+
+```bash
+git tag v2.0.1
+git push origin v2.0.1
+```
+
+Deploy script akan checkout tag tersebut di server, menjalankan `npm ci`, `npm run build`, restart service, lalu verifikasi healthcheck lokal dan URL public.
+
 ## Environment Variables
 
 | Variable | Default | Description |

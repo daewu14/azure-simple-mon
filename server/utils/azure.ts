@@ -3,14 +3,22 @@
 const cache = new Map<string, { at: number; value: unknown }>()
 const cacheMs = 60_000
 
+function runtimeValue(c: Record<string, unknown>, key: string, envKey: string, fallback = ''): string {
+  // Nuxt/Nitro production runtimeConfig reads env vars with NUXT_ prefix
+  // (e.g. NUXT_AZURE_DEVOPS_PAT). Keep direct process.env fallback so the
+  // existing systemd EnvironmentFile using AZURE_DEVOPS_PAT still works.
+  return String(c[key] || process.env[envKey] || process.env[`NUXT_${envKey}`] || fallback)
+}
+
 function cfg() {
-  const c = useRuntimeConfig()
+  const c = useRuntimeConfig() as unknown as Record<string, unknown>
+  const team = runtimeValue(c, 'azureDevOpsTeam', 'AZURE_DEVOPS_TEAM', 'Platform Squad')
   return {
-    org: (c.azureDevOpsOrg as string) || 'KiriminAja2026',
-    project: (c.azureDevOpsProject as string) || 'Product Delivery',
-    team: (c.azureDevOpsTeam as string) || 'Platform Squad',
-    teams: ((c.azureDevOpsTeams as string) || '').split(',').map((v: string) => v.trim()).filter(Boolean),
-    pat: (c.azureDevOpsPat as string) || '',
+    org: runtimeValue(c, 'azureDevOpsOrg', 'AZURE_DEVOPS_ORG', 'KiriminAja2026'),
+    project: runtimeValue(c, 'azureDevOpsProject', 'AZURE_DEVOPS_PROJECT', 'Product Delivery'),
+    team,
+    teams: runtimeValue(c, 'azureDevOpsTeams', 'AZURE_DEVOPS_TEAMS').split(',').map((v: string) => v.trim()).filter(Boolean),
+    pat: runtimeValue(c, 'azureDevOpsPat', 'AZURE_DEVOPS_PAT'),
     ver: '7.1',
   }
 }

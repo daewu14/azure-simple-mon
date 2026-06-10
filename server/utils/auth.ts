@@ -4,13 +4,19 @@ import { getCookie } from 'h3'
 
 const SESSION_COOKIE = 'platform_sprint_session'
 
+function runtimeValue(config: Record<string, unknown>, key: string, envKey: string, fallback = ''): string {
+  // Nuxt/Nitro production runtimeConfig reads env vars with NUXT_ prefix.
+  // Keep direct process.env fallback so the existing systemd EnvironmentFile works.
+  return String(config[key] || process.env[envKey] || process.env[`NUXT_${envKey}`] || fallback)
+}
+
 function getAuthConfig() {
-  const config = useRuntimeConfig()
+  const config = useRuntimeConfig() as unknown as Record<string, unknown>
   return {
-    username: config.dashboardAuthUsername || '',
-    salt: config.dashboardAuthSalt || '',
-    hash: config.dashboardAuthPasswordSha256 || '',
-    secret: config.dashboardSessionSecret || crypto.randomBytes(32).toString('hex'),
+    username: runtimeValue(config, 'dashboardAuthUsername', 'DASHBOARD_AUTH_USERNAME'),
+    salt: runtimeValue(config, 'dashboardAuthSalt', 'DASHBOARD_AUTH_SALT'),
+    hash: runtimeValue(config, 'dashboardAuthPasswordSha256', 'DASHBOARD_AUTH_PASSWORD_SHA256'),
+    secret: runtimeValue(config, 'dashboardSessionSecret', 'DASHBOARD_SESSION_SECRET', crypto.randomBytes(32).toString('hex')),
   }
 }
 
