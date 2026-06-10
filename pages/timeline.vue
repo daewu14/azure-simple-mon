@@ -39,7 +39,7 @@
         <div class="w-px h-5 bg-slate-800 shrink-0 hidden sm:block" />
         <div class="flex items-center gap-2 shrink-0 relative">
           <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">State</span>
-          <USelectMenu v-model="selectedStates" :items="allStates" multiple class="min-w-[160px]" :ui="{ container: 'z-[110]' }">
+          <USelectMenu v-model="selectedStates" :items="allStates" multiple class="min-w-[160px]" >
             <template #label>
               <span class="truncate">{{ stateFilterSummary }}</span>
             </template>
@@ -48,7 +48,7 @@
         
         <div class="flex items-center gap-2 shrink-0 relative">
           <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Assignee</span>
-          <USelectMenu v-model="selectedAssignees" :items="allAssignees" multiple class="min-w-[160px]" :ui="{ container: 'z-[110]' }">
+          <USelectMenu v-model="selectedAssignees" :items="allAssignees" multiple class="min-w-[160px]" >
             <template #label>
               <span class="truncate">{{ assigneeFilterSummary }}</span>
             </template>
@@ -169,13 +169,13 @@
           <div class="px-4 py-2 bg-slate-900 border-b border-slate-800/60 flex items-center gap-3 flex-wrap shrink-0 relative z-50">
             <div class="flex items-center gap-2 shrink-0 relative">
               <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Assignee</span>
-              <USelectMenu v-model="selectedAssignees" :items="allAssignees" multiple class="min-w-[160px]" :ui="{ container: 'z-[110]' }">
+              <USelectMenu :portal="false" v-model="selectedAssignees" :items="allAssignees" multiple class="min-w-[160px]">
                 <template #label><span class="truncate">{{ assigneeFilterSummary }}</span></template>
               </USelectMenu>
             </div>
             <div class="flex items-center gap-2 shrink-0 relative">
               <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">State</span>
-              <USelectMenu v-model="selectedStates" :items="allStates" multiple class="min-w-[160px]" :ui="{ container: 'z-[110]' }">
+              <USelectMenu :portal="false" v-model="selectedStates" :items="allStates" multiple class="min-w-[160px]">
                 <template #label><span class="truncate">{{ stateFilterSummary }}</span></template>
               </USelectMenu>
             </div>
