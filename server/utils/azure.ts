@@ -54,8 +54,9 @@ async function adoFetch(url: string, options: Record<string, unknown> = {}) {
   return text.trim() ? JSON.parse(text) : null
 }
 
-async function batchWorkItems(ids: number[], opts: { fields?: string[]; expand?: string } = {}) {
-  const { org, project, ver } = cfg()
+async function batchWorkItems(ids: number[], opts: { fields?: string[]; expand?: string; project?: string } = {}) {
+  const { org, project: defaultProject, ver } = cfg()
+  const project = opts.project || defaultProject
   const result: unknown[] = []
   for (let i = 0; i < ids.length; i += 200) {
     const body: Record<string, unknown> = { ids: ids.slice(i, i + 200), errorPolicy: 'Omit' }
@@ -66,6 +67,109 @@ async function batchWorkItems(ids: number[], opts: { fields?: string[]; expand?:
     result.push(...((data.value as unknown[]) || []))
   }
   return result as Record<string, unknown>[]
+}
+
+export async function getOpiData(customStart?: string, customEnd?: string) {
+  const { org, ver } = cfg()
+  const project = 'OPI Board'
+  
+  // Base date calculation for fallback
+  const now = new Date()
+  const dayOfWeek = now.getDay() || 7 // 1-7 (Mon-Sun)
+  const lastSunday = new Date(now)
+  lastSunday.setDate(now.getDate() - dayOfWeek)
+  lastSunday.setHours(23, 59, 59, 999)
+
+  const lastMonday = new Date(lastSunday)
+  lastMonday.setDate(lastSunday.getDate() - 6)
+  lastMonday.setHours(0, 0, 0, 0)
+
+  const startDate = customStart || lastMonday.toISOString().split('T')[0]
+  const endDate = customEnd || lastSunday.toISOString().split('T')[0]
+
+  const key = `opi_data_${startDate}_${endDate}`
+  const cached = cache.get(key)
+  if (cached && Date.now() - cached.at < cacheMs) return cached.value
+
+
+
+  // Query only User Stories, Bugs, Issues matching the date range
+  const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject]='${wiqlQuote(project)}' AND [System.WorkItemType] IN ('User Story', 'Bug', 'Issue') AND ([Microsoft.VSTS.Common.ActivatedDate] >= '${startDate}' AND [Microsoft.VSTS.Common.ActivatedDate] <= '${endDate}' OR [Microsoft.VSTS.Common.ClosedDate] >= '${startDate}' AND [Microsoft.VSTS.Common.ClosedDate] <= '${endDate}') ORDER BY [System.Id]`
+  const wiqlData = await adoFetch(`https://dev.azure.com/${org}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=${ver}`, { method: 'POST', body: JSON.stringify({ query: wiql }) })
+  const storyIds = ((wiqlData.workItems as Record<string, number>[]) || []).map((i) => i.id)
+  
+  const stories: Record<string, unknown>[] = []
+  let totalTasks = 0
+  let completedTasks = 0
+
+  if (storyIds.length > 0) {
+    // Fetch stories to get relations (child tasks)
+    const storyItems = await batchWorkItems(storyIds, { expand: 'Relations', project })
+    
+    const childIds: number[] = []
+    const childrenByParent = new Map<number, number[]>()
+    
+    for (const story of storyItems) {
+      for (const rel of (story.relations as Record<string, unknown>[]) || []) {
+        if (rel.rel !== 'System.LinkTypes.Hierarchy-Forward') continue
+        const childId = Number(String(rel.url).split('/').pop())
+        if (!Number.isFinite(childId)) continue
+        childIds.push(childId)
+        if (!childrenByParent.has(story.id as number)) childrenByParent.set(story.id as number, [])
+        childrenByParent.get(story.id as number)!.push(childId)
+      }
+    }
+
+    // Fetch all child tasks
+    const fields = ['System.Id','System.WorkItemType','System.Title','System.State','System.AssignedTo','System.Parent']
+    const childItems = childIds.length ? await batchWorkItems([...new Set(childIds)], { fields, project }) : []
+    const childById = new Map(childItems.map((i) => [i.id as number, i]))
+
+    for (const story of storyItems) {
+      const f = story.fields as Record<string, unknown>
+      const id = story.id as number
+      const title = String(f['System.Title'] || '')
+      const state = stateName(f['System.State'])
+      const assignedTo = assignedName(f['System.AssignedTo'])
+      const url = `https://dev.azure.com/${org}/${encodeURIComponent(project)}/_workitems/edit/${id}`
+
+      const cIds = childrenByParent.get(id) || []
+      const tasks = cIds.map(cid => childById.get(cid)).filter(Boolean).map(c => {
+        const cf = c!.fields as Record<string, unknown>
+        const cState = stateName(cf['System.State'])
+        totalTasks++
+        if (['Closed', 'Done', 'Resolved'].includes(cState)) completedTasks++
+        return {
+          id: c!.id,
+          title: String(cf['System.Title'] || ''),
+          state: cState,
+          assignedTo: assignedName(cf['System.AssignedTo']),
+          url: `https://dev.azure.com/${org}/${encodeURIComponent(project)}/_workitems/edit/${c!.id}`,
+          type: String(cf['System.WorkItemType'] || 'Task'),
+        }
+      })
+
+      stories.push({
+        id, title, state, assignedTo, url, tasks,
+        type: String(f['System.WorkItemType'] || 'User Story'),
+      })
+    }
+  }
+
+  const result = {
+    team: 'OPI Board Team',
+    dateRange: `${startDate} - ${endDate}`,
+    stats: {
+      totalStories: stories.length,
+      totalTasks,
+      completedTasks,
+      progressPercentage: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+    },
+    stories
+  }
+
+  cache.set(key, { at: Date.now(), value: result })
+  return result
 }
 
 async function getRevisions(id: number) {
