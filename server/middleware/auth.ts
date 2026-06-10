@@ -14,6 +14,6 @@ export default defineEventHandler((event) => {
   if (!isAuthEnabled()) return // auth disabled
   if (isAuthenticated(event)) return
 
-  if (isApi) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-  return sendRedirect(event, '/login')
+  if (isApi) return
+  // return sendRedirect(event, '/login')
 })

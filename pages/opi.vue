@@ -1,6 +1,5 @@
 <template>
   <div>
-    <useHead><title>OPI Board · Sprint Platform Dashboard</title></useHead>
 
     <!-- Hero -->
     <div class="mb-4">
@@ -8,7 +7,7 @@
         <div class="flex items-start justify-between gap-4 cursor-pointer select-none" @click="isHeroExpanded = !isHeroExpanded">
           <div>
             <div class="text-primary-500 text-[10px] font-bold uppercase tracking-widest mb-1.5">Azure DevOps · OPI Board</div>
-            <h1 class="text-2xl font-bold text-white">OPI Board (Minggu Lalu)</h1>
+            <h1 class="text-2xl font-bold text-white">OPI Board</h1>
           </div>
           <UButton
             icon="i-heroicons-chevron-down"
@@ -21,11 +20,12 @@
         </div>
         <div :class="['transition-all duration-300 ease-in-out overflow-hidden', isHeroExpanded ? 'max-h-[500px] opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0']">
           <p class="text-slate-400 text-sm mb-3 max-w-xl leading-relaxed">
-            Menampilkan daftar Story dan Task pada project OPI Board yang dibuat, diperbarui, atau diselesaikan pada rentang waktu minggu lalu (Senin s/d Minggu).
+            Menampilkan daftar Story dan Task pada project OPI Board berdasarkan Iterasi atau rentang waktu yang dipilih.
             Klik baris Story untuk expand/collapse task di dalamnya.
           </p>
           <div class="flex flex-wrap gap-2">
             <UBadge v-if="data" color="neutral" variant="soft">Team: <b class="ml-1">{{ data.team }}</b></UBadge>
+            <UBadge v-if="selectedSprintPath" color="purple" variant="soft">Iteration: <b class="ml-1">{{ sprints.find(s => s.path === selectedSprintPath)?.name || selectedSprintPath.split('\\').pop() }}</b></UBadge>
             <UBadge v-if="data" color="primary" variant="soft">Date Range: <b class="ml-1">{{ data.dateRange }}</b></UBadge>
           </div>
         </div>
@@ -57,6 +57,10 @@
         
         <!-- Bottom Row: Advanced Filters -->
         <div class="flex items-center gap-3 flex-wrap">
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Iteration</span>
+            <USelect v-model="selectedSprintPath" :items="sprintOptions" size="sm" class="w-48" placeholder="All Iterations" />
+          </div>
           <div class="flex items-center gap-2 shrink-0">
             <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">State</span>
             <USelectMenu v-model="selectedStates" :items="stateOptions" multiple placeholder="All States" class="w-[140px] sm:w-[160px]">
@@ -176,12 +180,25 @@ const expandedStories = ref<Set<number>>(new Set())
 
 const customStartDate = ref('')
 const customEndDate = ref('')
+const selectedSprintPath = ref('')
+const sprints = ref<any[]>([])
+const sprintOptions = computed(() => sprints.value.map(s => ({ label: s.name, value: s.path })))
+
+onMounted(async () => {
+  try {
+    const res = await $fetch<any>('/api/sprints', { query: { team: 'OPI Board Team', project: 'OPI Board' } })
+    sprints.value = res.sprints || []
+    const current = sprints.value.find((s: any) => s.timeFrame === 'current') || sprints.value[0]
+    if (current) selectedSprintPath.value = current.path
+  } catch {}
+})
 
 const { data, pending, refresh } = useFetch('/api/opi', {
   lazy: true,
   query: computed(() => ({
     startDate: customStartDate.value || undefined,
-    endDate: customEndDate.value || undefined
+    endDate: customEndDate.value || undefined,
+    sprintPath: selectedSprintPath.value || undefined
   }))
 })
 
@@ -286,6 +303,7 @@ function toggleStory(id: number) {
 }
 
 function clearFilters() {
+  selectedSprintPath.value = ''
   searchTerm.value = ''
   selectedAssignees.value = []
   selectedStates.value = []

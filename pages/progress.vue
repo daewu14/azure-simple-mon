@@ -1,6 +1,5 @@
 <template>
   <div>
-    <useHead><title>Progress Minggu Lalu · Sprint Platform Dashboard</title></useHead>
 
     <!-- Hero -->
     <UCard class="mb-4" :ui="{ body: { padding: 'p-5 sm:p-5' } }">

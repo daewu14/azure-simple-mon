@@ -69,7 +69,7 @@ async function batchWorkItems(ids: number[], opts: { fields?: string[]; expand?:
   return result as Record<string, unknown>[]
 }
 
-export async function getOpiData(customStart?: string, customEnd?: string) {
+export async function getOpiData(customStart?: string, customEnd?: string, sprintPath?: string) {
   const { org, ver } = cfg()
   const project = 'OPI Board'
   
@@ -87,14 +87,17 @@ export async function getOpiData(customStart?: string, customEnd?: string) {
   const startDate = customStart || lastMonday.toISOString().split('T')[0]
   const endDate = customEnd || lastSunday.toISOString().split('T')[0]
 
-  const key = `opi_data_${startDate}_${endDate}`
+  const key = `opi_data_${startDate}_${endDate}_${sprintPath || ""}`
   const cached = cache.get(key)
   if (cached && Date.now() - cached.at < cacheMs) return cached.value
 
 
 
   // Query only User Stories, Bugs, Issues matching the date range
-  const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject]='${wiqlQuote(project)}' AND [System.WorkItemType] IN ('User Story', 'Bug', 'Issue') AND ([Microsoft.VSTS.Common.ActivatedDate] >= '${startDate}' AND [Microsoft.VSTS.Common.ActivatedDate] <= '${endDate}' OR [Microsoft.VSTS.Common.ClosedDate] >= '${startDate}' AND [Microsoft.VSTS.Common.ClosedDate] <= '${endDate}') ORDER BY [System.Id]`
+  let wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject]='${wiqlQuote(project)}' AND [System.WorkItemType] IN ('User Story', 'Bug', 'Issue')`
+  if (sprintPath) wiql += ` AND [System.IterationPath] UNDER '${wiqlQuote(sprintPath)}'`
+  if (!sprintPath || (customStart || customEnd)) wiql += ` AND ([Microsoft.VSTS.Common.ActivatedDate] >= '${startDate}' AND [Microsoft.VSTS.Common.ActivatedDate] <= '${endDate}' OR [Microsoft.VSTS.Common.ClosedDate] >= '${startDate}' AND [Microsoft.VSTS.Common.ClosedDate] <= '${endDate}')`
+  wiql += ` ORDER BY [System.Id]`
   const wiqlData = await adoFetch(`https://dev.azure.com/${org}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=${ver}`, { method: 'POST', body: JSON.stringify({ query: wiql }) })
   const storyIds = ((wiqlData.workItems as Record<string, number>[]) || []).map((i) => i.id)
   
@@ -206,13 +209,14 @@ export async function listTeams(): Promise<string[]> {
   return value
 }
 
-export async function listSprints(teamName?: string) {
-  const { org, project, team: defaultTeam, ver } = cfg()
+export async function listSprints(teamName?: string, projectName?: string) {
+  const { org, project: defaultProject, team: defaultTeam, ver } = cfg()
+  const p = projectName || defaultProject
   const t = normalizeTeamName(teamName) || defaultTeam
-  const key = `sprints:${t}`
+  const key = `sprints:${p}:${t}`
   const cached = cache.get(key)
   if (cached && Date.now() - cached.at < cacheMs) return cached.value as Record<string, unknown>[]
-  const url = `https://dev.azure.com/${org}/${encodeURIComponent(project)}/${encodeURIComponent(t)}/_apis/work/teamsettings/iterations?api-version=${ver}`
+  const url = `https://dev.azure.com/${org}/${encodeURIComponent(p)}/${encodeURIComponent(t)}/_apis/work/teamsettings/iterations?api-version=${ver}`
   const data = await adoFetch(url)
   const value = ((data.value as Record<string, unknown>[]) || []).map((item) => ({
     id: item.id, name: item.name, path: item.path,
@@ -478,8 +482,8 @@ const fallbackSprints = [{ id: 'fallback-sprint-9', name: 'Sprint 9 - Platform S
 export async function safeListTeams(): Promise<string[]> {
   try { return await listTeams() } catch (e) { console.error(e); return [cfg().team] }
 }
-export async function safeListSprints(teamName?: string) {
-  try { return await listSprints(teamName) } catch (e) { console.error(e); return fallbackSprints }
+export async function safeListSprints(teamName?: string, projectName?: string) {
+  try { return await listSprints(teamName, projectName) } catch (e) { console.error(e); return fallbackSprints }
 }
 export async function safeSprintData(sprintPath: string, teamName?: string) {
   try { return await getSprintData(sprintPath, teamName) } catch (e: unknown) {
