@@ -166,7 +166,7 @@
             />
           </div>
 
-          <div class="px-4 py-2 bg-slate-900 border-b border-slate-800/60 flex items-center gap-3 flex-wrap shrink-0">
+          <div class="px-4 py-2 bg-slate-900 border-b border-slate-800/60 flex items-center gap-3 flex-wrap shrink-0 relative z-50">
             <div class="flex items-center gap-2 shrink-0 relative">
               <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Assignee</span>
               <USelectMenu v-model="selectedAssignees" :items="allAssignees" multiple class="min-w-[160px]" :ui="{ container: 'z-[110]' }">
