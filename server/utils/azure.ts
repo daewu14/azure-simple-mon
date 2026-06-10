@@ -96,7 +96,7 @@ export async function getOpiData(customStart?: string, customEnd?: string, sprin
   // Query only User Stories, Bugs, Issues matching the date range
   let wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject]='${wiqlQuote(project)}' AND [System.WorkItemType] IN ('User Story', 'Bug', 'Issue')`
   if (sprintPath) wiql += ` AND [System.IterationPath] UNDER '${wiqlQuote(sprintPath)}'`
-  if (!sprintPath || (customStart || customEnd)) wiql += ` AND ([Microsoft.VSTS.Common.ActivatedDate] >= '${startDate}' AND [Microsoft.VSTS.Common.ActivatedDate] <= '${endDate}' OR [Microsoft.VSTS.Common.ClosedDate] >= '${startDate}' AND [Microsoft.VSTS.Common.ClosedDate] <= '${endDate}')`
+  wiql += ` AND ([Microsoft.VSTS.Common.ActivatedDate] >= '${startDate}' AND [Microsoft.VSTS.Common.ActivatedDate] <= '${endDate}' OR [Microsoft.VSTS.Common.ClosedDate] >= '${startDate}' AND [Microsoft.VSTS.Common.ClosedDate] <= '${endDate}')`
   wiql += ` ORDER BY [System.Id]`
   const wiqlData = await adoFetch(`https://dev.azure.com/${org}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=${ver}`, { method: 'POST', body: JSON.stringify({ query: wiql }) })
   const storyIds = ((wiqlData.workItems as Record<string, number>[]) || []).map((i) => i.id)

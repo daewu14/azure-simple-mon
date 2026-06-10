@@ -178,8 +178,15 @@ const isHeroExpanded = ref(true)
 const searchTerm = ref('')
 const expandedStories = ref<Set<number>>(new Set())
 
-const customStartDate = ref('')
-const customEndDate = ref('')
+const now = new Date()
+const dayOfWeek = now.getDay() || 7
+const lastSunday = new Date(now)
+lastSunday.setDate(now.getDate() - dayOfWeek)
+const lastMonday = new Date(lastSunday)
+lastMonday.setDate(lastSunday.getDate() - 6)
+
+const customStartDate = ref(lastMonday.toISOString().split('T')[0])
+const customEndDate = ref(lastSunday.toISOString().split('T')[0])
 const selectedSprintPath = ref('')
 const sprints = ref<any[]>([])
 const sprintOptions = computed(() => sprints.value.map(s => ({ label: s.name, value: s.path })))
@@ -307,5 +314,7 @@ function clearFilters() {
   searchTerm.value = ''
   selectedAssignees.value = []
   selectedStates.value = []
+  customStartDate.value = lastMonday.toISOString().split('T')[0]
+  customEndDate.value = lastSunday.toISOString().split('T')[0]
 }
 </script>
