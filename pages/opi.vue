@@ -87,9 +87,9 @@
           
           <div class="flex items-center gap-2 shrink-0">
             <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Date</span>
-            <UInput type="date" v-model="customStartDate" size="sm" class="w-[120px]" :disabled="!!selectedSprintPath" />
+            <UInput type="date" v-model="customStartDate" size="sm" class="w-[120px]" />
             <span class="text-slate-500 text-xs">-</span>
-            <UInput type="date" v-model="customEndDate" size="sm" class="w-[120px]" :disabled="!!selectedSprintPath" />
+            <UInput type="date" v-model="customEndDate" size="sm" class="w-[120px]" />
           </div>
         </div>
       </div>
