@@ -1,6 +1,5 @@
 <template>
   <div>
-    <useHead><title>Welcome Wizard · Sprint Platform Dashboard</title></useHead>
 
     <!-- Hero -->
     <div class="bg-slate-900/70 border border-slate-700/40 rounded-2xl p-8 mb-6 relative overflow-hidden">

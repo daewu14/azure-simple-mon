@@ -1,7 +1,5 @@
 <template>
   <div>
-    <useHead><title>PBI Ready Release · Sprint Platform Dashboard</title></useHead>
-
     <!-- Hero + Stats -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 items-start">
       <UCard class="lg:col-span-2" :ui="{ body: { padding: 'p-5 sm:p-5' } }">
@@ -111,11 +109,11 @@
                   <UBadge color="neutral" variant="soft">{{ pbi.tasks.length }}</UBadge>
                 </td>
                 <td class="px-3 py-2 text-xs">
-                  <UBadge v-if="pbi.onReviewProductTasks.length" color="primary" variant="soft">{{ pbi.onReviewProductTasks.length }}</UBadge>
+                  <UBadge v-if="pbi.reviewTaskCount" color="primary" variant="soft">{{ pbi.reviewTaskCount }}</UBadge>
                   <span v-else class="text-slate-600">-</span>
                 </td>
                 <td class="px-3 py-2 text-xs">
-                  <UBadge v-if="pbi.releasePlanTasks.length" color="purple" variant="soft">{{ pbi.releasePlanTasks.length }}</UBadge>
+                  <UBadge v-if="pbi.releasePlanTaskCount" color="purple" variant="soft">{{ pbi.releasePlanTaskCount }}</UBadge>
                   <span v-else class="text-slate-600">-</span>
                 </td>
               </tr>

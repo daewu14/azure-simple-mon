@@ -3,7 +3,7 @@ import { getOpiData } from '../utils/azure'
 export default defineEventHandler(async (event) => {
   try {
     const query = getQuery(event)
-    return await getOpiData(query.startDate as string, query.endDate as string)
+    return await getOpiData(query.startDate as string, query.endDate as string, query.sprintPath as string)
   } catch (error: any) {
     throw createError({
       statusCode: 500,
