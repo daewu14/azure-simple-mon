@@ -222,11 +222,11 @@
           />
           <UButton
             v-if="aiGeneratedRows"
-            icon="i-heroicons-document-duplicate"
+            :icon="isCopied ? 'i-heroicons-check' : 'i-heroicons-document-duplicate'"
             size="xs"
-            color="sky"
+            :color="isCopied ? 'emerald' : 'sky'"
             variant="soft"
-            label="Copy to PPT"
+            :label="isCopied ? 'Copied!' : 'Copy to PPT'"
             @click.stop="copyToPPT"
           />
           <UButton
@@ -447,6 +447,7 @@ function resetAIReport() {
 }
 
 const toast = useToast()
+const isCopied = ref(false)
 
 async function copyToPPT() {
   const rows = aiGeneratedRows.value || managementRows.value
@@ -479,6 +480,8 @@ async function copyToPPT() {
     const clipboardItem = new ClipboardItem({ 'text/html': blobHtml })
     await navigator.clipboard.write([clipboardItem])
     
+    isCopied.value = true
+    setTimeout(() => isCopied.value = false, 2000)
     toast.add({ title: 'Tercopy ke Clipboard!', description: 'Tabel siap di-paste ke PowerPoint.', color: 'emerald', icon: 'i-heroicons-check-circle' })
   } catch (e) {
     console.error('Failed to copy', e)
@@ -493,6 +496,8 @@ async function copyToPPT() {
     selection?.addRange(range)
     try {
       document.execCommand('copy')
+      isCopied.value = true
+      setTimeout(() => isCopied.value = false, 2000)
       toast.add({ title: 'Tercopy ke Clipboard!', description: 'Tabel siap di-paste ke PowerPoint.', color: 'emerald', icon: 'i-heroicons-check-circle' })
     } catch (err) {
       toast.add({ title: 'Gagal', description: 'Gagal menyalin ke clipboard.', color: 'red', icon: 'i-heroicons-x-circle' })
