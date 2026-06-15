@@ -42,7 +42,7 @@
     <!-- Table -->
     <UCard :ui="{ body: { padding: 'p-0 sm:p-0' } }">
       <UTable
-        :rows="tableRows"
+        :data="tableRows"
         :columns="columns"
         :loading="pending"
         class="w-full whitespace-nowrap"
