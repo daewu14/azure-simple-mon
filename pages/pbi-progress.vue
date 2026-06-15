@@ -172,19 +172,24 @@
           </div>
           
           <div class="p-4 border-t border-slate-800 bg-slate-900/50">
-            <form @submit.prevent="sendChatMessage" class="relative">
-              <UInput
+            <form @submit.prevent="sendChatMessage" class="relative w-full">
+              <UTextarea
                 v-model="chatInput"
+                class="w-full"
                 placeholder="Berikan instruksi tambahan ke AI..."
-                :ui="{ wrapper: 'w-full', base: 'pl-4 pr-12 py-2.5', rounded: 'rounded-full' }"
+                :ui="{ wrapper: 'w-full', base: 'w-full pl-4 pr-12 py-2.5', rounded: 'rounded-2xl' }"
                 :disabled="aiLoading"
+                autoresize
+                :rows="1"
+                :maxrows="5"
+                @keydown.enter.prevent.exact="sendChatMessage"
               />
               <UButton
                 type="submit"
                 icon="i-heroicons-paper-airplane"
                 color="primary"
                 variant="ghost"
-                class="absolute right-1 top-1 bottom-1 px-3 rounded-full hover:bg-primary-500/10"
+                class="absolute right-1.5 bottom-1.5 p-2 rounded-full hover:bg-primary-500/10"
                 :loading="aiLoading"
                 :disabled="!chatInput.trim() || aiLoading"
               />
