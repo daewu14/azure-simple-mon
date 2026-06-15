@@ -31,6 +31,13 @@
           <USelect v-model="selectedYear" :items="yearOptions" class="w-[100px]" @change="loadData" />
         </div>
         <div class="w-px h-5 bg-slate-800 shrink-0 hidden sm:block" />
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Actual Release</span>
+          <UInput type="date" v-model="filterStartDate" size="sm" class="w-[125px]" />
+          <span class="text-slate-500 text-xs">-</span>
+          <UInput type="date" v-model="filterEndDate" size="sm" class="w-[125px]" />
+          <UButton v-if="filterStartDate || filterEndDate" size="xs" variant="ghost" color="red" icon="i-heroicons-x-mark" @click="filterStartDate = ''; filterEndDate = ''" />
+        </div>
         <div class="ml-auto shrink-0">
           <UButton size="sm" variant="ghost" color="neutral" :loading="pending" icon="i-heroicons-arrow-path" @click="loadData">
             Reload
@@ -110,6 +117,9 @@ const yearOptions = Array.from({ length: 5 }, (_, i) => {
 const data = ref<Record<string, unknown> | null>(null)
 const pending = ref(true)
 
+const filterStartDate = ref('')
+const filterEndDate = ref('')
+
 const columns = [
   { accessorKey: 'id', header: 'Product Backlog Item (PBI)' },
   { accessorKey: 'state', header: 'State' },
@@ -119,7 +129,23 @@ const columns = [
 
 const tableRows = computed(() => {
   if (!data.value || !data.value.pbis) return []
-  const pbis = data.value.pbis as Record<string, unknown>[]
+  let pbis = data.value.pbis as Record<string, unknown>[]
+  
+  if (filterStartDate.value) {
+    const start = new Date(filterStartDate.value).getTime()
+    pbis = pbis.filter(pbi => {
+      if (!pbi.actualReleaseDate) return false
+      return new Date(pbi.actualReleaseDate as string).getTime() >= start
+    })
+  }
+  
+  if (filterEndDate.value) {
+    const end = new Date(filterEndDate.value).getTime() + 86399999 // end of day
+    pbis = pbis.filter(pbi => {
+      if (!pbi.actualReleaseDate) return false
+      return new Date(pbi.actualReleaseDate as string).getTime() <= end
+    })
+  }
   
   return pbis.map(pbi => {
     let isLate = false
