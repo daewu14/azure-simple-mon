@@ -15,8 +15,16 @@
   },
   "dependencies": {
     "@nuxt/ui": "^3.0.0",
-    "nuxt": "^3.17.0"
+    "@popperjs/core": "^2.11.8",
+    "nuxt": "^3.17.0",
+    "v-calendar": "^3.1.2"
   },
-  "keywords": ["azure-devops", "dashboard", "pbi", "sprint", "monitor"],
+  "keywords": [
+    "azure-devops",
+    "dashboard",
+    "pbi",
+    "sprint",
+    "monitor"
+  ],
   "license": "UNLICENSED"
 }
