@@ -49,35 +49,36 @@
       >
         <template #id-cell="{ row }">
           <div class="flex items-center gap-2">
-            <a :href="row.url" target="_blank" class="text-primary-400 hover:text-primary-300 font-medium text-xs">#{{ row.id }}</a>
-            <span class="text-sm text-slate-200 whitespace-normal min-w-[300px]">{{ row.title }}</span>
+            <a :href="row.original.url" target="_blank" class="text-primary-400 hover:text-primary-300 font-medium text-xs">#{{ row.original.id }}</a>
+            <span class="text-sm text-slate-200 whitespace-normal min-w-[300px]">{{ row.original.title }}</span>
           </div>
         </template>
         
         <template #state-cell="{ row }">
-          <UBadge :color="stateColor(row.state)" variant="subtle" size="xs">{{ row.state }}</UBadge>
+          <UBadge :color="stateColor(row.original.state)" variant="subtle" size="xs">{{ row.original.state }}</UBadge>
         </template>
 
         <template #targetDate-cell="{ row }">
-          <span class="text-sm text-slate-300">{{ formatDate(row.targetDate) }}</span>
-          <div class="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" :title="row.iterationPath">
-            {{ row.iterationPath.split('\\').pop() }}
+          <span class="text-sm text-slate-300">{{ formatDate(row.original.targetDate) }}</span>
+          <div class="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" :title="row.original.iterationPath">
+            {{ row.original.iterationPath.split('\\').pop() }}
           </div>
         </template>
 
         <template #actualReleaseDate-cell="{ row }">
-          <div v-if="row.actualReleaseDate">
-            <span class="text-sm" :class="row.isLate ? 'text-red-400 font-bold' : 'text-emerald-400'">
-              {{ formatDate(row.actualReleaseDate) }}
+          <div v-if="row.original.actualReleaseDate">
+            <span class="text-sm" :class="row.original.isLate ? 'text-red-400 font-bold' : 'text-emerald-400'">
+              {{ formatDate(row.original.actualReleaseDate) }}
             </span>
-            <div v-if="row.isLate" class="text-[10px] text-red-500 mt-0.5">Terlambat rilis</div>
+            <div v-if="row.original.isLate" class="text-[10px] text-red-500 mt-0.5">Terlambat rilis</div>
           </div>
           <div v-else>
             <span class="text-sm text-slate-500">-</span>
-            <div v-if="row.isPastDue" class="text-[10px] text-orange-400 mt-0.5">Melewati target</div>
+            <div v-if="row.original.isPastDue" class="text-[10px] text-orange-400 mt-0.5">Melewati target</div>
           </div>
         </template>
       </UTable>
+
       
       <div v-if="!pending && !tableRows.length" class="p-8 text-center text-slate-400">
         Tidak ada PBI untuk target bulan ini.
