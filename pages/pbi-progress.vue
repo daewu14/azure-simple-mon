@@ -47,25 +47,25 @@
         :loading="pending"
         class="w-full whitespace-nowrap"
       >
-        <template #pbi-data="{ row }">
+        <template #pbi-cell="{ row }">
           <div class="flex items-center gap-2">
             <a :href="row.url" target="_blank" class="text-primary-400 hover:text-primary-300 font-medium text-xs">#{{ row.id }}</a>
             <span class="text-sm text-slate-200 whitespace-normal min-w-[300px]">{{ row.title }}</span>
           </div>
         </template>
         
-        <template #state-data="{ row }">
+        <template #state-cell="{ row }">
           <UBadge :color="stateColor(row.state)" variant="subtle" size="xs">{{ row.state }}</UBadge>
         </template>
 
-        <template #target-data="{ row }">
+        <template #target-cell="{ row }">
           <span class="text-sm text-slate-300">{{ formatDate(row.targetDate) }}</span>
           <div class="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" :title="row.iterationPath">
             {{ row.iterationPath.split('\\').pop() }}
           </div>
         </template>
 
-        <template #release-data="{ row }">
+        <template #release-cell="{ row }">
           <div v-if="row.actualReleaseDate">
             <span class="text-sm" :class="row.isLate ? 'text-red-400 font-bold' : 'text-emerald-400'">
               {{ formatDate(row.actualReleaseDate) }}
@@ -110,10 +110,10 @@ const data = ref<Record<string, unknown> | null>(null)
 const pending = ref(true)
 
 const columns = [
-  { key: 'pbi', label: 'Product Backlog Item (PBI)' },
-  { key: 'state', label: 'State' },
-  { key: 'target', label: 'Target (Sprint End)' },
-  { key: 'release', label: 'Actual Release' }
+  { id: 'pbi', header: 'Product Backlog Item (PBI)' },
+  { accessorKey: 'state', header: 'State' },
+  { accessorKey: 'targetDate', id: 'target', header: 'Target (Sprint End)' },
+  { accessorKey: 'actualReleaseDate', id: 'release', header: 'Actual Release' }
 ]
 
 const tableRows = computed(() => {
