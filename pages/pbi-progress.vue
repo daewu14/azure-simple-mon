@@ -242,6 +242,13 @@
             variant="ghost"
             size="sm"
             color="neutral"
+            icon="i-heroicons-arrows-pointing-out"
+            @click.stop="isReportFullscreen = true"
+          />
+          <UButton
+            variant="ghost"
+            size="sm"
+            color="neutral"
             icon="i-heroicons-chevron-down"
             :class="['transition-transform duration-300', isMgmtTableExpanded ? 'rotate-180' : '']"
             @click.stop="isMgmtTableExpanded = !isMgmtTableExpanded"
@@ -274,6 +281,85 @@
     </UCard>
       </div>
     </div>
+
+    <!-- Fullscreen Mode Overlay -->
+    <Teleport to="body">
+      <transition
+        enter-active-class="transition duration-150 ease-out"
+        leave-active-class="transition duration-100 ease-in"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div v-if="isReportFullscreen" class="fixed inset-0 z-[100] flex flex-col bg-slate-950 overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900">
+            <h2 class="text-xl font-bold text-primary-400">Progress {{ monthOptions.find(m => m.value === selectedMonth)?.label }} {{ selectedYear }} <span v-if="aiGeneratedRows" class="text-xs ml-2 text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-full">AI Generated</span></h2>
+            <div class="flex items-center gap-2">
+              <UButton
+                v-if="!aiGeneratedRows"
+                icon="i-heroicons-sparkles"
+                size="sm"
+                color="primary"
+                variant="soft"
+                label="Generate AI Report"
+                :loading="aiLoading"
+                @click.stop="generateAIReport"
+              />
+              <UButton
+                v-if="aiGeneratedRows"
+                icon="i-heroicons-pencil-square"
+                size="sm"
+                color="orange"
+                variant="soft"
+                label="Adjust Report"
+                @click.stop="isChatVisible = true; isReportFullscreen = false"
+              />
+              <UButton
+                v-if="aiGeneratedRows"
+                :icon="isCopied ? 'i-heroicons-check' : 'i-heroicons-document-duplicate'"
+                size="sm"
+                :color="isCopied ? 'emerald' : 'sky'"
+                variant="soft"
+                :label="isCopied ? 'Copied!' : 'Copy to PPT'"
+                @click.stop="copyToPPT"
+              />
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                icon="i-heroicons-arrows-pointing-in"
+                @click="isReportFullscreen = false"
+              />
+            </div>
+          </div>
+
+          <div class="flex-1 min-h-0 overflow-auto p-6 bg-slate-950">
+            <UTable
+              :data="aiGeneratedRows || managementRows"
+              :columns="managementColumns"
+              class="w-full whitespace-normal bg-slate-900 rounded-xl ring-1 ring-slate-800"
+            >
+              <template #feature-cell="{ row }">
+                <span class="text-base text-slate-200">{{ row.original.feature }}</span>
+              </template>
+              <template #state-cell="{ row }">
+                <UBadge 
+                  :color="row.original.state === 'Released' ? 'emerald' : row.original.state === 'Blocking' ? 'red' : 'blue'" 
+                  variant="soft" 
+                  size="sm"
+                >
+                  {{ row.original.state }}
+                </UBadge>
+              </template>
+              <template #target-cell="{ row }">
+                <span class="text-base text-slate-300">{{ row.original.target }}</span>
+              </template>
+            </UTable>
+          </div>
+        </div>
+      </transition>
+    </Teleport>
 
     <div class="text-slate-500 text-xs text-right mt-6">Generated: {{ data?.generatedAt || '-' }}</div>
 
@@ -315,7 +401,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { marked } from 'marked'
 
 marked.setOptions({ breaks: true })
@@ -512,6 +598,27 @@ async function copyToPPT() {
 
 
 
+const isReportFullscreen = ref(false)
+let isClosingFromPopState = false
+
+const handlePopState = () => {
+  if (isReportFullscreen.value) {
+    isClosingFromPopState = true
+    isReportFullscreen.value = false
+  }
+}
+
+watch(isReportFullscreen, (val) => {
+  if (val) {
+    history.pushState({ fullscreen: true }, '')
+  } else {
+    if (!isClosingFromPopState) {
+      history.back()
+    }
+    isClosingFromPopState = false
+  }
+})
+
 const leftWidth = ref(50)
 const isDragging = ref(false)
 const splitContainer = ref<HTMLElement | null>(null)
@@ -683,6 +790,8 @@ async function loadData() {
 watch(selectedTeam, () => loadData())
 
 onMounted(() => {
+  window.addEventListener('popstate', handlePopState)
+
   const stored = localStorage.getItem('pbiHeroExpanded')
   if (stored !== null) isHeroExpanded.value = stored === 'true'
   
@@ -696,6 +805,10 @@ onMounted(() => {
   if (storedSplit !== null) leftWidth.value = Number(storedSplit)
 
   loadData()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('popstate', handlePopState)
 })
 
 watch(isHeroExpanded, (val) => {
