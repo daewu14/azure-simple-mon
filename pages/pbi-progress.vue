@@ -162,7 +162,16 @@
             @click.stop="generateAIReport"
           />
           <UButton
-            v-else
+            v-if="aiGeneratedRows"
+            icon="i-heroicons-pencil-square"
+            size="xs"
+            color="orange"
+            variant="soft"
+            label="Adjust Report"
+            @click.stop="isClarificationModalOpen = true"
+          />
+          <UButton
+            v-if="aiGeneratedRows"
             icon="i-heroicons-arrow-uturn-left"
             size="xs"
             color="red"
@@ -208,6 +217,38 @@
     </div>
 
     <div class="text-slate-500 text-xs text-right mt-6">Generated: {{ data?.generatedAt || '-' }}</div>
+
+    <!-- Clarification Modal -->
+    <UModal v-model="isClarificationModalOpen">
+      <UCard :ui="{ ring: '', divide: 'divide-y divide-slate-800' }">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-semibold leading-6 text-white">
+              Adjust AI Report
+            </h3>
+            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark-20-solid" class="-my-1" @click="isClarificationModalOpen = false" />
+          </div>
+        </template>
+        
+        <div class="space-y-4">
+          <p class="text-sm text-slate-400">
+            Apakah ada hasil pengelompokan yang kurang tepat? Berikan instruksi tambahan agar AI dapat memperbaiki laporannya.
+          </p>
+          <UTextarea
+            v-model="clarificationText"
+            placeholder="Contoh: Pisahkan fitur X dan Y menjadi dua baris yang berbeda..."
+            :rows="4"
+          />
+        </div>
+
+        <template #footer>
+          <div class="flex justify-end gap-3">
+            <UButton color="gray" variant="soft" @click="isClarificationModalOpen = false">Batal</UButton>
+            <UButton color="primary" :loading="clarificationLoading" @click="generateAIReport(clarificationText)">Kirim Revisi</UButton>
+          </div>
+        </template>
+      </UCard>
+    </UModal>
   </div>
 </template>
 
@@ -223,22 +264,34 @@ const isMgmtTableExpanded = ref(true)
 
 const aiLoading = ref(false)
 const aiGeneratedRows = ref<any[] | null>(null)
+const isClarificationModalOpen = ref(false)
+const clarificationText = ref('')
+const clarificationLoading = ref(false)
 
-async function generateAIReport() {
-  if (aiLoading.value) return
-  aiLoading.value = true
+async function generateAIReport(feedback = '') {
+  if (aiLoading.value || clarificationLoading.value) return
+  if (feedback) {
+    clarificationLoading.value = true
+  } else {
+    aiLoading.value = true
+  }
   try {
     const res = await $fetch<{ success: boolean, data: any[] }>('/api/generate-ai-report', {
       method: 'POST',
-      body: { rows: managementRows.value }
+      body: { rows: managementRows.value, feedback }
     })
     if (res.success) {
       aiGeneratedRows.value = res.data.map((r, i) => ({ ...r, original: r, id: 'ai-' + i }))
+      if (feedback) {
+        isClarificationModalOpen.value = false
+        clarificationText.value = ''
+      }
     }
   } catch (err: any) {
     alert(err?.data?.message || 'Gagal generate AI report')
   } finally {
     aiLoading.value = false
+    clarificationLoading.value = false
   }
 }
 

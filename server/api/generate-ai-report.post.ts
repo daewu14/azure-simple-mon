@@ -3,6 +3,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const rows = body.rows
+  const feedback = body.feedback || ''
 
   if (!rows || !Array.isArray(rows)) {
     throw createError({
@@ -22,7 +23,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const prompt = `
+  let prompt = `
 Anda adalah seorang asisten yang bertugas merangkum daftar Product Backlog Item (PBI) menjadi laporan manajemen.
 Daftar PBI yang diberikan memiliki judul, state, dan target. Beberapa PBI mungkin ditujukan untuk mencapai satu fitur (goal) yang sama.
 Tugas Anda:
@@ -47,6 +48,13 @@ Format JSON yang diharapkan:
 Data PBI saat ini:
 ${JSON.stringify(rows.map((r: any) => ({ title: r.feature, state: r.state, target: r.target })), null, 2)}
 `
+
+  if (feedback) {
+    prompt += `\n\n--- PENTING: CATATAN REVISI DARI PENGGUNA ---
+Pengguna memberikan instruksi perbaikan dari hasil Anda sebelumnya:
+"${feedback}"
+Harap buat ulang hasil JSON berdasarkan aturan di atas ditambah dengan instruksi spesifik pengguna ini!`
+  }
 
   try {
     const response: any = await $fetch(`${aiBaseUrl}/chat/completions`, {
