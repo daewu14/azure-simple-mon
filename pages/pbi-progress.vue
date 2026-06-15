@@ -132,6 +132,8 @@
         Tidak ada PBI untuk target bulan ini.
       </div>
       </div>
+    </UCard>
+      </div>
 
       <!-- Resizer (only visible on xl) -->
       <div 
