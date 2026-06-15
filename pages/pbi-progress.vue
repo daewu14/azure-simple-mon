@@ -35,7 +35,7 @@
           <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Actual Release</span>
           <UPopover :popper="{ placement: 'bottom-start' }">
             <UButton icon="i-heroicons-calendar-days" :label="dateRangeLabel" size="sm" variant="soft" color="neutral" />
-            <template #panel>
+            <template #content>
               <div class="p-2 bg-slate-900 border border-slate-800 rounded-lg">
                 <ClientOnly>
                   <VDatePicker v-model.range="dateRange" color="blue" is-dark />
