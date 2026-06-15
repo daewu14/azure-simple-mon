@@ -403,10 +403,7 @@ function resetAIReport() {
   chatHistory.value = []
 }
 
-// Auto-reset when filters change
-watch([selectedMonth, selectedYear, selectedTeam, dateRange], () => {
-  resetAIReport()
-}, { deep: true })
+
 
 
 
@@ -603,5 +600,8 @@ watch(isMainTableExpanded, (val) => {
 
 watch(isMgmtTableExpanded, (val) => {
   localStorage.setItem('pbiMgmtExpanded', String(val))
-})
+// Auto-reset when filters change
+watch([selectedMonth, selectedYear, selectedTeam, dateRange], () => {
+  resetAIReport()
+}, { deep: true })
 </script>
