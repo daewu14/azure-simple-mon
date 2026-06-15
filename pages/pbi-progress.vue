@@ -63,13 +63,25 @@
     </UCard>
 
     <!-- Table -->
-    <UCard :ui="{ body: { padding: 'p-0 sm:p-0' } }">
-      <UTable
-        :data="tableRows"
-        :columns="columns"
-        :loading="pending"
-        class="w-full whitespace-nowrap"
-      >
+    <UCard class="mb-4" :ui="{ body: { padding: 'p-0 sm:p-0' } }">
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none bg-slate-900/50" @click="isMainTableExpanded = !isMainTableExpanded">
+        <h2 class="text-lg font-bold text-white">Detail Product Backlog Item (PBI)</h2>
+        <UButton
+          variant="ghost"
+          size="sm"
+          color="neutral"
+          icon="i-heroicons-chevron-down"
+          :class="['transition-transform duration-300', isMainTableExpanded ? 'rotate-180' : '']"
+          @click.stop="isMainTableExpanded = !isMainTableExpanded"
+        />
+      </div>
+      <div v-show="isMainTableExpanded">
+        <UTable
+          :data="tableRows"
+          :columns="columns"
+          :loading="pending"
+          class="w-full whitespace-nowrap"
+        >
         <template #id-cell="{ row }">
           <div class="flex items-center gap-2">
             <a :href="row.original.url" target="_blank" class="text-primary-400 hover:text-primary-300 font-medium text-xs">#{{ row.original.id }}</a>
@@ -106,13 +118,23 @@
       <div v-if="!pending && !tableRows.length" class="p-8 text-center text-slate-400">
         Tidak ada PBI untuk target bulan ini.
       </div>
+      </div>
     </UCard>
 
     <!-- Management Report -->
     <UCard v-if="managementRows.length" class="mb-4" :ui="{ body: { padding: 'p-0 sm:p-0' } }">
-      <div class="px-5 py-4 border-b border-slate-800">
-        <h2 class="text-xl font-bold text-primary-400">Progress {{ monthOptions.find(m => m.value === selectedMonth)?.label }} {{ selectedYear }}</h2>
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none bg-slate-900/50" @click="isMgmtTableExpanded = !isMgmtTableExpanded">
+        <h2 class="text-lg font-bold text-primary-400">Progress {{ monthOptions.find(m => m.value === selectedMonth)?.label }} {{ selectedYear }}</h2>
+        <UButton
+          variant="ghost"
+          size="sm"
+          color="neutral"
+          icon="i-heroicons-chevron-down"
+          :class="['transition-transform duration-300', isMgmtTableExpanded ? 'rotate-180' : '']"
+          @click.stop="isMgmtTableExpanded = !isMgmtTableExpanded"
+        />
       </div>
+      <div v-show="isMgmtTableExpanded">
       <UTable
         :data="managementRows"
         :columns="managementColumns"
@@ -134,6 +156,7 @@
           <span class="text-sm text-slate-300">{{ row.original.target }}</span>
         </template>
       </UTable>
+      </div>
     </UCard>
 
     <div class="text-slate-600 text-xs text-right mt-3">Generated: {{ data?.generatedAt || '-' }}</div>
@@ -146,6 +169,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 useHead({ title: 'PBI Monthly Progress · Sprint Platform Dashboard' })
 
 const isHeroExpanded = ref(true)
+const isMainTableExpanded = ref(true)
+const isMgmtTableExpanded = ref(true)
 
 const { selectedTeam } = useTeam()
 
@@ -289,10 +314,25 @@ watch(selectedTeam, () => loadData())
 onMounted(() => {
   const stored = localStorage.getItem('pbiHeroExpanded')
   if (stored !== null) isHeroExpanded.value = stored === 'true'
+  
+  const storedMain = localStorage.getItem('pbiMainExpanded')
+  if (storedMain !== null) isMainTableExpanded.value = storedMain === 'true'
+
+  const storedMgmt = localStorage.getItem('pbiMgmtExpanded')
+  if (storedMgmt !== null) isMgmtTableExpanded.value = storedMgmt === 'true'
+
   loadData()
 })
 
 watch(isHeroExpanded, (val) => {
   localStorage.setItem('pbiHeroExpanded', String(val))
+})
+
+watch(isMainTableExpanded, (val) => {
+  localStorage.setItem('pbiMainExpanded', String(val))
+})
+
+watch(isMgmtTableExpanded, (val) => {
+  localStorage.setItem('pbiMgmtExpanded', String(val))
 })
 </script>
