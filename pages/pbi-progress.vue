@@ -239,6 +239,7 @@
             v-model="clarificationText"
             placeholder="Contoh: Pisahkan fitur X dan Y menjadi dua baris yang berbeda..."
             :rows="4"
+            class="w-full"
           />
         </div>
 
