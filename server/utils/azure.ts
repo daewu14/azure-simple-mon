@@ -221,6 +221,8 @@ export async function listSprints(teamName?: string, projectName?: string) {
   const value = ((data.value as Record<string, unknown>[]) || []).map((item) => ({
     id: item.id, name: item.name, path: item.path,
     timeFrame: (item.attributes as Record<string, string>)?.timeFrame || '',
+    startDate: (item.attributes as Record<string, string>)?.startDate || null,
+    finishDate: (item.attributes as Record<string, string>)?.finishDate || null,
   }))
   cache.set(key, { at: Date.now(), value })
   return value
@@ -502,5 +504,95 @@ export async function safeLastWeekProgress(sprintPath: string, teamName?: string
     console.error(e)
     const range = prevWeekRange()
     return { generatedAt: new Date().toISOString(), team: normalizeTeamName(teamName), sprintPath, range: { start: range.startIso, end: range.endIso, label: range.label }, items: [], pbiGroups: [], stats: { totalTasksScanned: 0, inProgressTasks: 0, stillInProgress: 0, totalHours: 0, avgHours: 0, assignees: 0 }, warning: (e as Error).message }
+  }
+}
+
+export async function getTeamFieldValues(teamName?: string, projectName?: string) {
+  const { org, project: defaultProject, team: defaultTeam, ver } = cfg()
+  const p = projectName || defaultProject
+  const t = normalizeTeamName(teamName) || defaultTeam
+  const key = `teamfieldvalues:${p}:${t}`
+  const cached = cache.get(key)
+  if (cached && Date.now() - cached.at < cacheMs) return cached.value as Record<string, unknown>
+
+  const url = `https://dev.azure.com/${org}/${encodeURIComponent(p)}/${encodeURIComponent(t)}/_apis/work/teamsettings/teamfieldvalues?api-version=${ver}`
+  const data = await adoFetch(url)
+  cache.set(key, { at: Date.now(), value: data })
+  return data
+}
+
+export async function getPbiMonthly(month: number, year: number, teamName?: string) {
+  const { org, project, team: defaultTeam, ver } = cfg()
+  const t = normalizeTeamName(teamName) || defaultTeam
+  const key = `pbimonthly:${t}:${year}:${month}`
+  const cached = cache.get(key)
+  if (cached && Date.now() - cached.at < cacheMs) return cached.value
+
+  // Fetch sprints to map IterationPath to targetDate
+  const sprints = await listSprints(t)
+  const teamFields = await getTeamFieldValues(t)
+  
+  const startDate = new Date(Date.UTC(year, month - 1, 1)).toISOString().split('T')[0]
+  const endDate = new Date(Date.UTC(year, month, 1)).toISOString().split('T')[0]
+
+  let pbis: Record<string, unknown>[] = []
+
+  const values = (teamFields.values as Record<string, unknown>[]) || []
+  let conditions = ''
+  if (values.length > 0) {
+    const fieldRef = (teamFields.field as Record<string, string>)?.referenceName || 'System.AreaPath'
+    const areaConditions = values.map(v => {
+      const isUnder = v.includeChildren ? 'UNDER' : '='
+      return `[${fieldRef}] ${isUnder} '${wiqlQuote(String(v.value))}'`
+    }).join(' OR ')
+    conditions = ` AND (${areaConditions})`
+  } else if (sprints.length > 0) {
+    // Fallback to iteration path
+    const sprintPaths = sprints.map(s => s.path)
+    conditions = ` AND (` + sprintPaths.map(p => `[System.IterationPath] UNDER '${wiqlQuote(p)}'`).join(' OR ') + `)`
+  }
+
+  const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject]='${wiqlQuote(project)}' AND [System.WorkItemType]='Product Backlog Item' AND [System.State] <> 'New' AND [Microsoft.VSTS.Common.StateChangeDate] >= '${startDate}' AND [Microsoft.VSTS.Common.StateChangeDate] < '${endDate}'${conditions} ORDER BY [System.Id]`
+  
+  const wiqlData = await adoFetch(`https://dev.azure.com/${org}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=${ver}`, { method: 'POST', body: JSON.stringify({ query: wiql }) })
+  const pbiIds = ((wiqlData.workItems as Record<string, number>[]) || []).map((i) => i.id)
+  
+  if (pbiIds.length > 0) {
+    const fields = ['System.Id', 'System.Title', 'System.State', 'System.IterationPath', 'System.AssignedTo', 'Microsoft.VSTS.Common.ClosedDate', 'System.Description', 'Microsoft.VSTS.Common.AcceptanceCriteria', 'Microsoft.VSTS.Common.StateChangeDate']
+    const pbiItems = await batchWorkItems(pbiIds, { fields })
+    
+    const sprintByPath = new Map(sprints.map(s => [s.path, s]))
+
+    for (const item of pbiItems) {
+        const f = (item.fields as Record<string, unknown>) || {}
+        const ipath = String(f['System.IterationPath'] || '')
+        const sprint = sprintByPath.get(ipath)
+        
+        pbis.push({
+          id: item.id,
+          title: String(f['System.Title'] || ''),
+          state: String(f['System.State'] || ''),
+          assignedTo: assignedName(f['System.AssignedTo']),
+          iterationPath: ipath,
+          targetDate: sprint?.finishDate || null,
+          actualReleaseDate: f['Microsoft.VSTS.Common.ClosedDate'] || null,
+          description: String(f['System.Description'] || ''),
+          acceptanceCriteria: String(f['Microsoft.VSTS.Common.AcceptanceCriteria'] || ''),
+          url: `https://dev.azure.com/${org}/${encodeURIComponent(project)}/_workitems/edit/${item.id}`
+        })
+      }
+    }
+
+  const uniqueSprints = new Set(pbis.map(p => p.iterationPath).filter(Boolean))
+
+  const value = { generatedAt: new Date().toISOString(), team: t, year, month, targetSprints: uniqueSprints.size, pbis }
+  cache.set(key, { at: Date.now(), value })
+  return value
+}
+
+export async function safeGetPbiMonthly(month: number, year: number, teamName?: string) {
+  try { return await getPbiMonthly(month, year, teamName) } catch (e: unknown) {
+    console.error(e)
+    return { generatedAt: new Date().toISOString(), team: normalizeTeamName(teamName), year, month, targetSprints: 0, pbis: [], warning: (e as Error).message }
   }
 }

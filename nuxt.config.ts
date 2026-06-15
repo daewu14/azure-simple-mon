@@ -23,6 +23,9 @@ export default defineNuxtConfig({
     dashboardAuthSalt: process.env.DASHBOARD_AUTH_SALT || '',
     dashboardAuthPasswordSha256: process.env.DASHBOARD_AUTH_PASSWORD_SHA256 || '',
     dashboardSessionSecret: process.env.DASHBOARD_SESSION_SECRET || '',
+    aiBaseUrl: process.env.AI_BASE_URL || '',
+    aiApiKey: process.env.AI_API_KEY || '',
+    aiModel: process.env.AI_MODEL || 'kantor-gemini',
     public: {
       defaultTeam: process.env.AZURE_DEVOPS_TEAM || 'Platform Squad',
     },
