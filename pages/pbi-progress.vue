@@ -124,19 +124,40 @@
     <!-- Management Report -->
     <UCard v-if="managementRows.length" class="mb-4" :ui="{ body: { padding: 'p-0 sm:p-0' } }">
       <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none bg-slate-900/50" @click="isMgmtTableExpanded = !isMgmtTableExpanded">
-        <h2 class="text-lg font-bold text-primary-400">Progress {{ monthOptions.find(m => m.value === selectedMonth)?.label }} {{ selectedYear }}</h2>
-        <UButton
-          variant="ghost"
-          size="sm"
-          color="neutral"
-          icon="i-heroicons-chevron-down"
-          :class="['transition-transform duration-300', isMgmtTableExpanded ? 'rotate-180' : '']"
-          @click.stop="isMgmtTableExpanded = !isMgmtTableExpanded"
-        />
+        <h2 class="text-lg font-bold text-primary-400">Progress {{ monthOptions.find(m => m.value === selectedMonth)?.label }} {{ selectedYear }} <span v-if="aiGeneratedRows" class="text-xs ml-2 text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-full">AI Generated</span></h2>
+        <div class="flex items-center gap-2">
+          <UButton
+            v-if="!aiGeneratedRows"
+            icon="i-heroicons-sparkles"
+            size="2xs"
+            color="primary"
+            variant="soft"
+            label="Generate AI Report"
+            :loading="aiLoading"
+            @click.stop="generateAIReport"
+          />
+          <UButton
+            v-else
+            icon="i-heroicons-arrow-uturn-left"
+            size="2xs"
+            color="red"
+            variant="soft"
+            label="Reset"
+            @click.stop="resetAIReport"
+          />
+          <UButton
+            variant="ghost"
+            size="sm"
+            color="neutral"
+            icon="i-heroicons-chevron-down"
+            :class="['transition-transform duration-300', isMgmtTableExpanded ? 'rotate-180' : '']"
+            @click.stop="isMgmtTableExpanded = !isMgmtTableExpanded"
+          />
+        </div>
       </div>
       <div v-show="isMgmtTableExpanded">
       <UTable
-        :data="managementRows"
+        :data="aiGeneratedRows || managementRows"
         :columns="managementColumns"
         class="w-full whitespace-normal"
       >
@@ -170,7 +191,34 @@ useHead({ title: 'PBI Monthly Progress · Sprint Platform Dashboard' })
 
 const isHeroExpanded = ref(true)
 const isMainTableExpanded = ref(true)
+
 const isMgmtTableExpanded = ref(true)
+
+const aiLoading = ref(false)
+const aiGeneratedRows = ref<any[] | null>(null)
+
+async function generateAIReport() {
+  if (aiLoading.value) return
+  aiLoading.value = true
+  try {
+    const res = await $fetch<{ success: boolean, data: any[] }>('/api/generate-ai-report', {
+      method: 'POST',
+      body: { rows: managementRows.value }
+    })
+    if (res.success) {
+      aiGeneratedRows.value = res.data.map((r, i) => ({ ...r, original: r, id: 'ai-' + i }))
+    }
+  } catch (err: any) {
+    alert(err?.data?.message || 'Gagal generate AI report')
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+function resetAIReport() {
+  aiGeneratedRows.value = null
+}
+
 
 const { selectedTeam } = useTeam()
 
