@@ -2,21 +2,30 @@
   <div>
     <!-- Hero -->
     <UCard class="mb-4" :ui="{ body: { padding: 'p-5 sm:p-5' } }">
-      <div class="flex items-start justify-between gap-4">
+      <div class="flex items-start justify-between gap-4 cursor-pointer select-none" @click="isHeroExpanded = !isHeroExpanded">
         <div>
           <div class="text-primary-500 text-[10px] font-bold uppercase tracking-widest mb-1.5">Azure DevOps · Product Delivery</div>
           <h1 class="text-2xl font-bold text-white">PBI Monthly Progress</h1>
-          <p class="text-slate-400 text-sm mt-2 max-w-2xl leading-relaxed">
-            Pantau progress Product Backlog Item (PBI) berdasarkan target penyelesaian per bulan.
-          </p>
         </div>
+        <UButton
+          variant="ghost"
+          size="sm"
+          icon="i-heroicons-chevron-down"
+          :class="['transition-transform duration-300', isHeroExpanded ? 'rotate-180' : '']"
+          @click.stop="isHeroExpanded = !isHeroExpanded"
+        />
       </div>
-      <div class="mt-4 flex flex-wrap gap-2">
-        <UBadge v-if="data" color="neutral" variant="soft">Team: <b class="ml-1">{{ data.team }}</b></UBadge>
-        <UBadge v-if="data" color="neutral" variant="soft">Total Sprint Target: <b class="ml-1">{{ data.targetSprints }}</b></UBadge>
-        <UBadge v-if="data" color="neutral" variant="soft">Total PBI: <b class="ml-1">{{ data.pbis?.length || 0 }}</b></UBadge>
+      <div :class="['transition-all duration-300 ease-in-out overflow-hidden', isHeroExpanded ? 'max-h-[500px] opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0']">
+        <p class="text-slate-400 text-sm mb-3 max-w-2xl leading-relaxed">
+          Pantau progress Product Backlog Item (PBI) berdasarkan target penyelesaian per bulan.
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <UBadge v-if="data" color="neutral" variant="soft">Team: <b class="ml-1">{{ data.team }}</b></UBadge>
+          <UBadge v-if="data" color="neutral" variant="soft">Total Sprint Target: <b class="ml-1">{{ data.targetSprints }}</b></UBadge>
+          <UBadge v-if="data" color="neutral" variant="soft">Total PBI: <b class="ml-1">{{ data.pbis?.length || 0 }}</b></UBadge>
+        </div>
+        <UAlert v-if="data?.warning" color="warning" variant="soft" :description="String(data.warning)" class="mt-3" />
       </div>
-      <UAlert v-if="data?.warning" color="warning" variant="soft" :description="String(data.warning)" class="mt-3" />
     </UCard>
 
     <!-- Toolbar -->
@@ -104,7 +113,11 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue'
+
 useHead({ title: 'PBI Monthly Progress · Sprint Platform Dashboard' })
+
+const isHeroExpanded = ref(true)
 
 const { selectedTeam } = useTeam()
 
@@ -187,7 +200,7 @@ const tableRows = computed(() => {
   })
 })
 
-function stateColor(state: string) {
+const stateColor = (state: string) => {
   const s = state.toLowerCase()
   if (['done', 'released', 'closed'].includes(s)) return 'emerald'
   if (['new', 'to do'].includes(s)) return 'slate'
@@ -218,6 +231,12 @@ async function loadData() {
 watch(selectedTeam, () => loadData())
 
 onMounted(() => {
+  const stored = localStorage.getItem('pbiHeroExpanded')
+  if (stored !== null) isHeroExpanded.value = stored === 'true'
   loadData()
+})
+
+watch(isHeroExpanded, (val) => {
+  localStorage.setItem('pbiHeroExpanded', String(val))
 })
 </script>
