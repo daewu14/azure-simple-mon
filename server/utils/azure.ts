@@ -552,7 +552,7 @@ export async function getPbiMonthly(month: number, year: number, teamName?: stri
     conditions = ` AND (` + sprintPaths.map(p => `[System.IterationPath] UNDER '${wiqlQuote(p)}'`).join(' OR ') + `)`
   }
 
-  const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject]='${wiqlQuote(project)}' AND [System.WorkItemType]='Product Backlog Item' AND [Microsoft.VSTS.Common.StateChangeDate] >= '${startDate}' AND [Microsoft.VSTS.Common.StateChangeDate] < '${endDate}'${conditions} ORDER BY [System.Id]`
+  const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject]='${wiqlQuote(project)}' AND [System.WorkItemType]='Product Backlog Item' AND [System.State] <> 'New' AND [Microsoft.VSTS.Common.StateChangeDate] >= '${startDate}' AND [Microsoft.VSTS.Common.StateChangeDate] < '${endDate}'${conditions} ORDER BY [System.Id]`
   
   const wiqlData = await adoFetch(`https://dev.azure.com/${org}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=${ver}`, { method: 'POST', body: JSON.stringify({ query: wiql }) })
   const pbiIds = ((wiqlData.workItems as Record<string, number>[]) || []).map((i) => i.id)
