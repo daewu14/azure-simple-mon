@@ -182,7 +182,7 @@
                 autoresize
                 :rows="1"
                 :maxrows="5"
-                @keydown.enter.prevent.exact="sendChatMessage"
+                @keydown.enter="handleEnterKey"
               />
               <UButton
                 type="submit"
@@ -342,6 +342,13 @@ function extractAndApplyJSON(content: string) {
     } catch (e) {
       console.error('Failed to parse streaming JSON:', e)
     }
+  }
+}
+
+function handleEnterKey(e: KeyboardEvent) {
+  if (!e.shiftKey) {
+    e.preventDefault()
+    sendChatMessage()
   }
 }
 
