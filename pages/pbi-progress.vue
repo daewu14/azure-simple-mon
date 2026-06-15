@@ -146,6 +146,51 @@
       <!-- Right Pane -->
       <div class="w-full xl:flex-grow xl:w-0">
         <!-- Management Report -->
+    
+
+        <!-- AI Chat Interface -->
+        <div v-if="isChatVisible" class="border border-slate-800 bg-slate-950/30 rounded-xl mb-4 overflow-hidden shadow-xl">
+          <div class="p-4 bg-slate-900/50 border-b border-slate-800 flex items-center gap-2">
+            <UIcon name="i-heroicons-chat-bubble-left-ellipsis" class="text-primary-400 w-5 h-5" />
+            <h3 class="text-sm font-semibold text-slate-200">AI Report Assistant</h3>
+          </div>
+          
+          <div class="p-4 space-y-4 max-h-[400px] overflow-y-auto">
+            <div v-for="(msg, i) in chatHistory" :key="i" class="flex gap-3 text-sm" :class="msg.role === 'user' ? 'flex-row-reverse' : ''">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" :class="msg.role === 'user' ? 'bg-primary-500/20 text-primary-400' : 'bg-emerald-500/20 text-emerald-400'">
+                <UIcon :name="msg.role === 'user' ? 'i-heroicons-user' : 'i-heroicons-sparkles'" class="w-4 h-4" />
+              </div>
+              <div class="px-4 py-3 rounded-2xl max-w-[85%]" :class="msg.role === 'user' ? 'bg-primary-500/10 text-slate-200 border border-primary-500/20 rounded-tr-none' : 'bg-slate-800/50 text-slate-300 border border-slate-700/50 rounded-tl-none'">
+                <div class="whitespace-pre-wrap leading-relaxed" v-html="formatChatMessage(msg.content)"></div>
+                <div v-if="msg.role === 'assistant' && !msg.content && aiLoading" class="flex items-center gap-1 mt-1 text-emerald-500">
+                  <div class="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></div>
+                  <div class="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                  <div class="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="p-4 border-t border-slate-800 bg-slate-900/50">
+            <form @submit.prevent="sendChatMessage" class="relative">
+              <UInput
+                v-model="chatInput"
+                placeholder="Berikan instruksi tambahan ke AI..."
+                :ui="{ wrapper: 'w-full', base: 'pl-4 pr-12 py-2.5', rounded: 'rounded-full' }"
+                :disabled="aiLoading"
+              />
+              <UButton
+                type="submit"
+                icon="i-heroicons-paper-airplane"
+                color="primary"
+                variant="ghost"
+                class="absolute right-1 top-1 bottom-1 px-3 rounded-full hover:bg-primary-500/10"
+                :loading="aiLoading"
+                :disabled="!chatInput.trim() || aiLoading"
+              />
+            </form>
+          </div>
+        </div>
     <!-- Management Report -->
     <UCard v-if="managementRows.length" :ui="{ background: 'bg-slate-900', ring: 'ring-1 ring-slate-800', body: { padding: 'p-0 sm:p-0' } }">
       <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none bg-slate-800/30 hover:bg-slate-800/50 transition-colors" @click="isMgmtTableExpanded = !isMgmtTableExpanded">
@@ -160,6 +205,15 @@
             label="Generate AI Report"
             :loading="aiLoading"
             @click.stop="generateAIReport"
+          />
+          <UButton
+            v-if="aiGeneratedRows"
+            icon="i-heroicons-pencil-square"
+            size="xs"
+            color="orange"
+            variant="soft"
+            label="Adjust Report"
+            @click.stop="isChatVisible = true"
           />
           <UButton
             v-if="aiGeneratedRows"
@@ -202,50 +256,6 @@
           <span class="text-sm text-slate-300">{{ row.original.target }}</span>
         </template>
       </UTable>
-
-        <!-- AI Chat Interface -->
-        <div v-if="chatHistory.length" class="border-t border-slate-800 bg-slate-950/30">
-          <div class="p-4 bg-slate-900/50 border-b border-slate-800 flex items-center gap-2">
-            <UIcon name="i-heroicons-chat-bubble-left-ellipsis" class="text-primary-400 w-5 h-5" />
-            <h3 class="text-sm font-semibold text-slate-200">AI Report Assistant</h3>
-          </div>
-          
-          <div class="p-4 space-y-4 max-h-[400px] overflow-y-auto">
-            <div v-for="(msg, i) in chatHistory" :key="i" class="flex gap-3 text-sm" :class="msg.role === 'user' ? 'flex-row-reverse' : ''">
-              <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" :class="msg.role === 'user' ? 'bg-primary-500/20 text-primary-400' : 'bg-emerald-500/20 text-emerald-400'">
-                <UIcon :name="msg.role === 'user' ? 'i-heroicons-user' : 'i-heroicons-sparkles'" class="w-4 h-4" />
-              </div>
-              <div class="px-4 py-3 rounded-2xl max-w-[85%]" :class="msg.role === 'user' ? 'bg-primary-500/10 text-slate-200 border border-primary-500/20 rounded-tr-none' : 'bg-slate-800/50 text-slate-300 border border-slate-700/50 rounded-tl-none'">
-                <div class="whitespace-pre-wrap leading-relaxed" v-html="formatChatMessage(msg.content)"></div>
-                <div v-if="msg.role === 'assistant' && !msg.content && aiLoading" class="flex items-center gap-1 mt-1 text-emerald-500">
-                  <div class="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></div>
-                  <div class="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                  <div class="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="p-4 border-t border-slate-800 bg-slate-900/50">
-            <form @submit.prevent="sendChatMessage" class="relative">
-              <UInput
-                v-model="chatInput"
-                placeholder="Berikan instruksi tambahan ke AI..."
-                :ui="{ wrapper: 'w-full', base: 'pl-4 pr-12 py-2.5', rounded: 'rounded-full' }"
-                :disabled="aiLoading"
-              />
-              <UButton
-                type="submit"
-                icon="i-heroicons-paper-airplane"
-                color="primary"
-                variant="ghost"
-                class="absolute right-1 top-1 bottom-1 px-3 rounded-full hover:bg-primary-500/10"
-                :loading="aiLoading"
-                :disabled="!chatInput.trim() || aiLoading"
-              />
-            </form>
-          </div>
-        </div>
       </div>
     </UCard>
       </div>
@@ -303,6 +313,7 @@ const isMgmtTableExpanded = ref(true)
 const aiLoading = ref(false)
 const aiGeneratedRows = ref<any[] | null>(null)
 
+const isChatVisible = ref(false)
 const chatHistory = ref<{role: 'user'|'assistant', content: string}[]>([])
 const chatInput = ref('')
 
@@ -341,6 +352,7 @@ async function sendChatMessage() {
 
 async function generateAIReport() {
   if (aiLoading.value) return
+  isChatVisible.value = false
   if (chatHistory.value.length === 0) {
     chatHistory.value.push({ role: 'user', content: 'Tolong buatkan laporan manajemen dari data PBI ini.' })
   }
@@ -401,6 +413,7 @@ async function streamAIResponse() {
 function resetAIReport() {
   aiGeneratedRows.value = null
   chatHistory.value = []
+  isChatVisible.value = false
 }
 
 
@@ -600,6 +613,8 @@ watch(isMainTableExpanded, (val) => {
 
 watch(isMgmtTableExpanded, (val) => {
   localStorage.setItem('pbiMgmtExpanded', String(val))
+})
+
 // Auto-reset when filters change
 watch([selectedMonth, selectedYear, selectedTeam, dateRange], () => {
   resetAIReport()
