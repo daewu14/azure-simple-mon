@@ -30,9 +30,9 @@ Anda HARUS selalu membalas dengan struktur berikut:
 2. Diikuti dengan data laporan manajemen dalam format JSON yang dibungkus dengan markdown \`\`\`json.
 
 Aturan Pembuatan Laporan JSON:
-1. Baca dan analisa judul (title) serta deskripsi (description) dari setiap PBI. Kelompokkan PBI yang memiliki tujuan fungsional yang sama ke dalam 1 "Feature" yang merangkumnya dengan bahasa bisnis yang mudah dipahami oleh manajemen. Jangan sebutkan nomor PBI.
-2. Jika ada PBI yang berdiri sendiri dan tidak dapat dikelompokkan, jadikan itu sebagai "Feature" tersendiri.
-3. Tentukan "Platform" atau "Sistem" yang terdampak oleh fitur tersebut berdasarkan deskripsi atau judul (contoh: Shopify, Dashboard Member, API Mitra, dll). Jika tidak spesifik, isi dengan "-".
+1. Baca dan analisa "title", "description", serta "acceptanceCriteria" dari setiap PBI. Kelompokkan PBI yang memiliki tujuan fungsional yang sama ke dalam 1 "Feature".
+2. Buat nama "Feature" yang SANGAT informatif dan mendetail. Boleh menggunakan kalimat yang agak panjang untuk mendeskripsikan secara utuh apa yang dilakukan oleh fitur tersebut berdasarkan hasil analisamu. Jangan sebutkan nomor PBI.
+3. Tentukan "Platform" atau "Sistem" yang terdampak oleh fitur tersebut berdasarkan deskripsi, judul, atau kriteria penerimaan (contoh: Shopify, Dashboard Member, API Mitra, dll). Jika tidak spesifik, isi dengan "-".
 4. Tentukan "State" dari fitur tersebut:
    - "Released": Jika semua PBI dalam fitur tersebut sudah Released/Done.
    - "Blocking": Jika ada salah satu PBI yang berstatus Blocking (terlambat dari target).
@@ -41,7 +41,7 @@ Aturan Pembuatan Laporan JSON:
 6. Format JSON yang diharapkan HANYA berupa array of objects:
 [
   {
-    "feature": "Nama Fitur Hasil Rangkuman",
+    "feature": "Nama Fitur Hasil Rangkuman (Sangat Informatif & Mendetail)",
     "platform": "Nama Platform",
     "state": "Released | Blocking | Processing",
     "target": "DD MMM YYYY"
@@ -52,6 +52,7 @@ Data PBI dasar yang akan dirangkum:
 ${JSON.stringify(rows.map((r: any) => ({ 
   title: r.feature, 
   description: (r.description || '').replace(/<[^>]*>?/gm, '').trim().substring(0, 500), // Limit description to 500 chars to avoid token limit overflow 
+  acceptanceCriteria: (r.acceptanceCriteria || '').replace(/<[^>]*>?/gm, '').trim().substring(0, 500), // Limit AC to 500 chars
   state: r.state, 
   target: r.target 
 })), null, 2)}

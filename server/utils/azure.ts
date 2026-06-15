@@ -537,7 +537,7 @@ export async function getPbiMonthly(month: number, year: number, teamName?: stri
     const pbiIds = ((wiqlData.workItems as Record<string, number>[]) || []).map((i) => i.id)
     
     if (pbiIds.length > 0) {
-      const fields = ['System.Id', 'System.Title', 'System.State', 'System.IterationPath', 'System.AssignedTo', 'Microsoft.VSTS.Common.ClosedDate', 'System.Description']
+      const fields = ['System.Id', 'System.Title', 'System.State', 'System.IterationPath', 'System.AssignedTo', 'Microsoft.VSTS.Common.ClosedDate', 'System.Description', 'Microsoft.VSTS.Common.AcceptanceCriteria']
       const pbiItems = await batchWorkItems(pbiIds, { fields })
       
       const sprintByPath = new Map(targetSprints.map(s => [s.path, s]))
@@ -556,6 +556,7 @@ export async function getPbiMonthly(month: number, year: number, teamName?: stri
           targetDate: sprint?.finishDate || null,
           actualReleaseDate: f['Microsoft.VSTS.Common.ClosedDate'] || null,
           description: String(f['System.Description'] || ''),
+          acceptanceCriteria: String(f['Microsoft.VSTS.Common.AcceptanceCriteria'] || ''),
           url: `https://dev.azure.com/${org}/${encodeURIComponent(project)}/_workitems/edit/${item.id}`
         })
       }

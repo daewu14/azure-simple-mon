@@ -531,7 +531,8 @@ const managementRows = computed(() => {
       platform: '-',
       state: mgmtState,
       target: formatDate(row.targetDate),
-      description: row.description
+      description: row.description,
+      acceptanceCriteria: row.acceptanceCriteria
     }
   })
 })
