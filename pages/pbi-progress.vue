@@ -159,7 +159,7 @@
             variant="soft"
             label="Generate AI Report"
             :loading="aiLoading"
-            @click.stop="generateAIReport"
+            @click.stop="generateAIReport('')"
           />
           <UButton
             v-if="aiGeneratedRows"
@@ -219,8 +219,9 @@
     <div class="text-slate-500 text-xs text-right mt-6">Generated: {{ data?.generatedAt || '-' }}</div>
 
     <!-- Clarification Modal -->
-    <UModal v-model="isClarificationModalOpen">
-      <UCard :ui="{ ring: '', divide: 'divide-y divide-slate-800' }">
+    <div v-if="isClarificationModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4" @click.self="isClarificationModalOpen = false">
+      <div class="w-full max-w-lg animate-[fade-in_0.2s_ease-out]">
+        <UCard :ui="{ ring: 'ring-1 ring-slate-800', divide: 'divide-y divide-slate-800', background: 'bg-slate-900', shadow: 'shadow-2xl' }">
         <template #header>
           <div class="flex items-center justify-between">
             <h3 class="text-base font-semibold leading-6 text-white">
@@ -248,7 +249,8 @@
           </div>
         </template>
       </UCard>
-    </UModal>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -269,6 +271,7 @@ const clarificationText = ref('')
 const clarificationLoading = ref(false)
 
 async function generateAIReport(feedback = '') {
+  if (typeof feedback !== 'string') feedback = ''
   if (aiLoading.value || clarificationLoading.value) return
   if (feedback) {
     clarificationLoading.value = true
