@@ -222,6 +222,15 @@
           />
           <UButton
             v-if="aiGeneratedRows"
+            icon="i-heroicons-document-duplicate"
+            size="xs"
+            color="sky"
+            variant="soft"
+            label="Copy to PPT"
+            @click.stop="copyToPPT"
+          />
+          <UButton
+            v-if="aiGeneratedRows"
             icon="i-heroicons-arrow-uturn-left"
             size="xs"
             color="red"
@@ -436,6 +445,62 @@ function resetAIReport() {
   chatHistory.value = []
   isChatVisible.value = false
 }
+
+const toast = useToast()
+
+async function copyToPPT() {
+  const rows = aiGeneratedRows.value || managementRows.value
+  if (!rows || rows.length === 0) return
+
+  const cols = managementColumns
+
+  const html = `
+    <table style="border-collapse: collapse; width: 100%; font-family: Calibri, sans-serif; font-size: 11pt;">
+      <thead>
+        <tr>
+          ${cols.map(c => `<th style="background-color: #4a86e8; color: white; padding: 6px 12px; text-align: left; border: 1px solid white; font-weight: bold;">${c.header}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((row, i) => {
+          const bgColor = i % 2 === 0 ? '#c9daf8' : '#eef3fc'
+          return `
+            <tr>
+              ${cols.map(c => `<td style="background-color: ${bgColor}; padding: 6px 12px; border: 1px solid white; vertical-align: top;">${row.original?.[c.accessorKey] || row[c.accessorKey] || '-'}</td>`).join('')}
+            </tr>
+          `
+        }).join('')}
+      </tbody>
+    </table>
+  `
+
+  try {
+    const blobHtml = new Blob([html], { type: 'text/html' })
+    const clipboardItem = new ClipboardItem({ 'text/html': blobHtml })
+    await navigator.clipboard.write([clipboardItem])
+    
+    toast.add({ title: 'Tercopy ke Clipboard!', description: 'Tabel siap di-paste ke PowerPoint.', color: 'emerald', icon: 'i-heroicons-check-circle' })
+  } catch (e) {
+    console.error('Failed to copy', e)
+    // Fallback for older browsers
+    const el = document.createElement('div')
+    el.innerHTML = html
+    document.body.appendChild(el)
+    const selection = window.getSelection()
+    const range = document.createRange()
+    range.selectNodeContents(el)
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+    try {
+      document.execCommand('copy')
+      toast.add({ title: 'Tercopy ke Clipboard!', description: 'Tabel siap di-paste ke PowerPoint.', color: 'emerald', icon: 'i-heroicons-check-circle' })
+    } catch (err) {
+      toast.add({ title: 'Gagal', description: 'Gagal menyalin ke clipboard.', color: 'red', icon: 'i-heroicons-x-circle' })
+    }
+    document.body.removeChild(el)
+  }
+}
+
 
 
 
