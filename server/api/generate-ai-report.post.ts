@@ -32,15 +32,17 @@ Anda HARUS selalu membalas dengan struktur berikut:
 Aturan Pembuatan Laporan JSON:
 1. Baca dan analisa judul (title) serta deskripsi (description) dari setiap PBI. Kelompokkan PBI yang memiliki tujuan fungsional yang sama ke dalam 1 "Feature" yang merangkumnya dengan bahasa bisnis yang mudah dipahami oleh manajemen. Jangan sebutkan nomor PBI.
 2. Jika ada PBI yang berdiri sendiri dan tidak dapat dikelompokkan, jadikan itu sebagai "Feature" tersendiri.
-3. Tentukan "State" dari fitur tersebut:
+3. Tentukan "Platform" atau "Sistem" yang terdampak oleh fitur tersebut berdasarkan deskripsi atau judul (contoh: Shopify, Dashboard Member, API Mitra, dll). Jika tidak spesifik, isi dengan "-".
+4. Tentukan "State" dari fitur tersebut:
    - "Released": Jika semua PBI dalam fitur tersebut sudah Released/Done.
    - "Blocking": Jika ada salah satu PBI yang berstatus Blocking (terlambat dari target).
    - "Processing": Jika PBI belum Released dan tidak ada yang Blocking.
-4. Tentukan "Target": Ambil target sprint terjauh dari kelompok PBI tersebut (atau ikuti target yang ada).
-5. Format JSON yang diharapkan HANYA berupa array of objects:
+5. Tentukan "Target": Ambil target sprint terjauh dari kelompok PBI tersebut (atau ikuti target yang ada).
+6. Format JSON yang diharapkan HANYA berupa array of objects:
 [
   {
     "feature": "Nama Fitur Hasil Rangkuman",
+    "platform": "Nama Platform",
     "state": "Released | Blocking | Processing",
     "target": "DD MMM YYYY"
   }

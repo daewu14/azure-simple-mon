@@ -507,6 +507,7 @@ const columns = [
 
 const managementColumns = [
   { accessorKey: 'feature', header: 'Feature' },
+  { accessorKey: 'platform', header: 'Platform' },
   { accessorKey: 'state', header: 'State' },
   { accessorKey: 'target', header: 'Target' }
 ]
@@ -527,6 +528,7 @@ const managementRows = computed(() => {
     return {
       id: row.id,
       feature: row.title,
+      platform: '-',
       state: mgmtState,
       target: formatDate(row.targetDate),
       description: row.description
