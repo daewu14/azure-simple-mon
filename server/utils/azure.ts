@@ -221,6 +221,8 @@ export async function listSprints(teamName?: string, projectName?: string) {
   const value = ((data.value as Record<string, unknown>[]) || []).map((item) => ({
     id: item.id, name: item.name, path: item.path,
     timeFrame: (item.attributes as Record<string, string>)?.timeFrame || '',
+    startDate: (item.attributes as Record<string, string>)?.startDate || null,
+    finishDate: (item.attributes as Record<string, string>)?.finishDate || null,
   }))
   cache.set(key, { at: Date.now(), value })
   return value
@@ -502,5 +504,71 @@ export async function safeLastWeekProgress(sprintPath: string, teamName?: string
     console.error(e)
     const range = prevWeekRange()
     return { generatedAt: new Date().toISOString(), team: normalizeTeamName(teamName), sprintPath, range: { start: range.startIso, end: range.endIso, label: range.label }, items: [], pbiGroups: [], stats: { totalTasksScanned: 0, inProgressTasks: 0, stillInProgress: 0, totalHours: 0, avgHours: 0, assignees: 0 }, warning: (e as Error).message }
+  }
+}
+
+export async function getPbiMonthly(month: number, year: number, teamName?: string) {
+  const { org, project, team: defaultTeam, ver } = cfg()
+  const t = normalizeTeamName(teamName) || defaultTeam
+  const key = `pbimonthly:${t}:${year}:${month}`
+  const cached = cache.get(key)
+  if (cached && Date.now() - cached.at < cacheMs) return cached.value
+
+  // Fetch all sprints for the team
+  const sprints = await listSprints(t)
+  
+  // Filter sprints that finish in the selected month & year
+  // month is 1-12
+  const targetSprints = sprints.filter(s => {
+    if (!s.finishDate) return false
+    const d = new Date(s.finishDate)
+    return d.getUTCFullYear() === year && d.getUTCMonth() + 1 === month
+  })
+
+  let pbis: Record<string, unknown>[] = []
+
+  if (targetSprints.length > 0) {
+    const sprintPaths = targetSprints.map(s => s.path)
+    const conditions = sprintPaths.map(p => `[System.IterationPath] UNDER '${wiqlQuote(p)}'`).join(' OR ')
+    
+    const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject]='${wiqlQuote(project)}' AND [System.WorkItemType]='Product Backlog Item' AND (${conditions}) ORDER BY [System.Id]`
+    
+    const wiqlData = await adoFetch(`https://dev.azure.com/${org}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=${ver}`, { method: 'POST', body: JSON.stringify({ query: wiql }) })
+    const pbiIds = ((wiqlData.workItems as Record<string, number>[]) || []).map((i) => i.id)
+    
+    if (pbiIds.length > 0) {
+      const fields = ['System.Id', 'System.Title', 'System.State', 'System.IterationPath', 'System.AssignedTo', 'Microsoft.VSTS.Common.ClosedDate']
+      const pbiItems = await batchWorkItems(pbiIds, { fields })
+      
+      const sprintByPath = new Map(targetSprints.map(s => [s.path, s]))
+
+      for (const item of pbiItems) {
+        const f = (item.fields as Record<string, unknown>) || {}
+        const ipath = String(f['System.IterationPath'] || '')
+        const sprint = sprintByPath.get(ipath)
+        
+        pbis.push({
+          id: item.id,
+          title: String(f['System.Title'] || ''),
+          state: String(f['System.State'] || ''),
+          assignedTo: assignedName(f['System.AssignedTo']),
+          iterationPath: ipath,
+          targetDate: sprint?.finishDate || null,
+          actualReleaseDate: f['Microsoft.VSTS.Common.ClosedDate'] || null,
+          url: `https://dev.azure.com/${org}/${encodeURIComponent(project)}/_workitems/edit/${item.id}`
+        })
+      }
+    }
+  }
+
+  const value = { generatedAt: new Date().toISOString(), team: t, year, month, targetSprints: targetSprints.length, pbis }
+  cache.set(key, { at: Date.now(), value })
+  return value
+}
+
+export async function safeGetPbiMonthly(month: number, year: number, teamName?: string) {
+  try { return await getPbiMonthly(month, year, teamName) } catch (e: unknown) {
+    console.error(e)
+    return { generatedAt: new Date().toISOString(), team: normalizeTeamName(teamName), year, month, targetSprints: 0, pbis: [], warning: (e as Error).message }
   }
 }

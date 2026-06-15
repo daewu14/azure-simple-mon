@@ -96,6 +96,7 @@ const navLinks = computed(() => [
   { label: 'Timeline Gantt', icon: 'i-heroicons-chart-bar', to: { path: '/timeline', query: teamQuery.value } },
   { label: 'Progress Minggu Lalu', icon: 'i-heroicons-calendar-days', to: { path: '/progress', query: teamQuery.value } },
   { label: 'OPI Board', icon: 'i-heroicons-clipboard-document-list', to: { path: '/opi', query: teamQuery.value } },
+  { label: 'PBI Monthly Progress', icon: 'i-heroicons-calendar-days', to: { path: '/pbi-progress', query: teamQuery.value } },
 ])
 
 function onTeamChange() {
