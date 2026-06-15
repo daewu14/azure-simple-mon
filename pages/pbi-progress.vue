@@ -159,16 +159,7 @@
             variant="soft"
             label="Generate AI Report"
             :loading="aiLoading"
-            @click.stop="generateAIReport('')"
-          />
-          <UButton
-            v-if="aiGeneratedRows"
-            icon="i-heroicons-pencil-square"
-            size="xs"
-            color="orange"
-            variant="soft"
-            label="Adjust Report"
-            @click.stop="isClarificationModalOpen = true"
+            @click.stop="generateAIReport"
           />
           <UButton
             v-if="aiGeneratedRows"
@@ -211,6 +202,50 @@
           <span class="text-sm text-slate-300">{{ row.original.target }}</span>
         </template>
       </UTable>
+
+        <!-- AI Chat Interface -->
+        <div v-if="chatHistory.length" class="border-t border-slate-800 bg-slate-950/30">
+          <div class="p-4 bg-slate-900/50 border-b border-slate-800 flex items-center gap-2">
+            <UIcon name="i-heroicons-chat-bubble-left-ellipsis" class="text-primary-400 w-5 h-5" />
+            <h3 class="text-sm font-semibold text-slate-200">AI Report Assistant</h3>
+          </div>
+          
+          <div class="p-4 space-y-4 max-h-[400px] overflow-y-auto">
+            <div v-for="(msg, i) in chatHistory" :key="i" class="flex gap-3 text-sm" :class="msg.role === 'user' ? 'flex-row-reverse' : ''">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" :class="msg.role === 'user' ? 'bg-primary-500/20 text-primary-400' : 'bg-emerald-500/20 text-emerald-400'">
+                <UIcon :name="msg.role === 'user' ? 'i-heroicons-user' : 'i-heroicons-sparkles'" class="w-4 h-4" />
+              </div>
+              <div class="px-4 py-3 rounded-2xl max-w-[85%]" :class="msg.role === 'user' ? 'bg-primary-500/10 text-slate-200 border border-primary-500/20 rounded-tr-none' : 'bg-slate-800/50 text-slate-300 border border-slate-700/50 rounded-tl-none'">
+                <div class="whitespace-pre-wrap leading-relaxed" v-html="formatChatMessage(msg.content)"></div>
+                <div v-if="msg.role === 'assistant' && !msg.content && aiLoading" class="flex items-center gap-1 mt-1 text-emerald-500">
+                  <div class="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></div>
+                  <div class="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                  <div class="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="p-4 border-t border-slate-800 bg-slate-900/50">
+            <form @submit.prevent="sendChatMessage" class="relative">
+              <UInput
+                v-model="chatInput"
+                placeholder="Berikan instruksi tambahan ke AI..."
+                :ui="{ wrapper: 'w-full', base: 'pl-4 pr-12 py-2.5', rounded: 'rounded-full' }"
+                :disabled="aiLoading"
+              />
+              <UButton
+                type="submit"
+                icon="i-heroicons-paper-airplane"
+                color="primary"
+                variant="ghost"
+                class="absolute right-1 top-1 bottom-1 px-3 rounded-full hover:bg-primary-500/10"
+                :loading="aiLoading"
+                :disabled="!chatInput.trim() || aiLoading"
+              />
+            </form>
+          </div>
+        </div>
       </div>
     </UCard>
       </div>
@@ -267,41 +302,112 @@ const isMgmtTableExpanded = ref(true)
 
 const aiLoading = ref(false)
 const aiGeneratedRows = ref<any[] | null>(null)
-const isClarificationModalOpen = ref(false)
-const clarificationText = ref('')
-const clarificationLoading = ref(false)
 
-async function generateAIReport(feedback = '') {
-  if (typeof feedback !== 'string') feedback = ''
-  if (aiLoading.value || clarificationLoading.value) return
-  if (feedback) {
-    clarificationLoading.value = true
-  } else {
-    aiLoading.value = true
+const chatHistory = ref<{role: 'user'|'assistant', content: string}[]>([])
+const chatInput = ref('')
+
+// Function to clean JSON block from chat message for display
+function formatChatMessage(content: string) {
+  // Strip out markdown JSON blocks from display text
+  let text = content.replace(/```json[\s\S]*?```/g, '')
+  text = text.replace(/\n{3,}/g, '\n\n') // clean up excessive newlines
+  return text.trim() || ''
+}
+
+// Extract JSON block from AI response to update the table
+function extractAndApplyJSON(content: string) {
+  const match = content.match(/```json\n([\s\S]*?)\n```/)
+  if (match && match[1]) {
+    try {
+      const parsed = JSON.parse(match[1])
+      if (Array.isArray(parsed)) {
+        aiGeneratedRows.value = parsed.map((r, i) => ({ ...r, original: r, id: 'ai-' + i }))
+      }
+    } catch (e) {
+      console.error('Failed to parse streaming JSON:', e)
+    }
   }
+}
+
+async function sendChatMessage() {
+  if (!chatInput.value.trim() || aiLoading.value) return
+  
+  const userText = chatInput.value
+  chatInput.value = ''
+  
+  chatHistory.value.push({ role: 'user', content: userText })
+  await streamAIResponse()
+}
+
+async function generateAIReport() {
+  if (aiLoading.value) return
+  if (chatHistory.value.length === 0) {
+    chatHistory.value.push({ role: 'user', content: 'Tolong buatkan laporan manajemen dari data PBI ini.' })
+  }
+  await streamAIResponse()
+}
+
+async function streamAIResponse() {
+  aiLoading.value = true
+  // Insert placeholder for AI
+  const aiMsg = { role: 'assistant', content: '' }
+  chatHistory.value.push(aiMsg as any)
+  
   try {
-    const res = await $fetch<{ success: boolean, data: any[] }>('/api/generate-ai-report', {
+    const res = await fetch('/api/generate-ai-report', {
       method: 'POST',
-      body: { rows: managementRows.value, feedback }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rows: managementRows.value, chatHistory: chatHistory.value.slice(0, -1) })
     })
-    if (res.success) {
-      aiGeneratedRows.value = res.data.map((r, i) => ({ ...r, original: r, id: 'ai-' + i }))
-      if (feedback) {
-        isClarificationModalOpen.value = false
-        clarificationText.value = ''
+
+    if (!res.body) throw new Error('No stream available')
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n\n')
+      buffer = lines.pop() || ''
+      
+      for (const block of lines) {
+        const line = block.split('\n').find(l => l.startsWith('data: '))
+        if (line && !line.includes('[DONE]')) {
+          try {
+            const data = JSON.parse(line.slice(6))
+            aiMsg.content += data.choices[0].delta?.content || ''
+            
+            // As we stream, we can attempt to extract JSON if it finishes the block
+            extractAndApplyJSON(aiMsg.content)
+          } catch (e) { }
+        }
       }
     }
+    
+    // Final extraction
+    extractAndApplyJSON(aiMsg.content)
+
   } catch (err: any) {
-    alert(err?.data?.message || 'Gagal generate AI report')
+    alert('Gagal menghubungi server AI')
   } finally {
     aiLoading.value = false
-    clarificationLoading.value = false
   }
 }
 
 function resetAIReport() {
   aiGeneratedRows.value = null
+  chatHistory.value = []
 }
+
+// Auto-reset when filters change
+watch([selectedMonth, selectedYear, selectedTeam, dateRange], () => {
+  resetAIReport()
+}, { deep: true })
+
 
 
 

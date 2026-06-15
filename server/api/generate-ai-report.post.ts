@@ -1,9 +1,9 @@
-import { defineEventHandler, readBody, createError } from 'h3'
+import { defineEventHandler, readBody, createError, sendStream, setHeader } from 'h3'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const rows = body.rows
-  const feedback = body.feedback || ''
+  const chatHistory = body.chatHistory || []
 
   if (!rows || !Array.isArray(rows)) {
     throw createError({
@@ -23,20 +23,21 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  let prompt = `
-Anda adalah seorang asisten yang bertugas merangkum daftar Product Backlog Item (PBI) menjadi laporan manajemen.
-Daftar PBI yang diberikan memiliki judul, state, dan target. Beberapa PBI mungkin ditujukan untuk mencapai satu fitur (goal) yang sama.
-Tugas Anda:
-1. Kelompokkan PBI yang memiliki tujuan yang sama ke dalam 1 "Feature" yang lebih mudah dibaca oleh manajemen. Jangan sebutkan nomor PBI.
+  const systemPrompt = `
+Anda adalah seorang asisten analitik yang membantu merangkum Product Backlog Item (PBI) menjadi laporan manajemen.
+Anda HARUS selalu membalas dengan struktur berikut:
+1. Penjelasan singkat yang ramah dan profesional mengenai tindakan yang Anda lakukan.
+2. Diikuti dengan data laporan manajemen dalam format JSON yang dibungkus dengan markdown \`\`\`json.
+
+Aturan Pembuatan Laporan JSON:
+1. Kelompokkan PBI yang memiliki tujuan yang sama ke dalam 1 "Feature" yang mudah dibaca oleh manajemen. Jangan sebutkan nomor PBI.
 2. Jika ada PBI yang berdiri sendiri, jadikan itu sebagai "Feature" dengan nama yang mudah dipahami.
 3. Tentukan "State" dari fitur tersebut:
    - "Released": Jika semua PBI dalam fitur tersebut sudah Released/Done.
    - "Blocking": Jika ada salah satu PBI yang berstatus Blocking (terlambat dari target).
    - "Processing": Jika PBI belum Released dan tidak ada yang Blocking.
 4. Tentukan "Target": Ambil target sprint terjauh dari kelompok PBI tersebut (atau ikuti target yang ada).
-
-Berikan respons HANYA dalam bentuk JSON array of objects tanpa teks lain sama sekali (jangan gunakan format markdown seperti \`\`\`json).
-Format JSON yang diharapkan:
+5. Format JSON yang diharapkan HANYA berupa array of objects:
 [
   {
     "feature": "Nama Fitur Hasil Rangkuman",
@@ -45,55 +46,43 @@ Format JSON yang diharapkan:
   }
 ]
 
-Data PBI saat ini:
+Data PBI dasar yang akan dirangkum:
 ${JSON.stringify(rows.map((r: any) => ({ title: r.feature, state: r.state, target: r.target })), null, 2)}
 `
 
-  if (feedback) {
-    prompt += `\n\n--- PENTING: CATATAN REVISI DARI PENGGUNA ---
-Pengguna memberikan instruksi perbaikan dari hasil Anda sebelumnya:
-"${feedback}"
-Harap buat ulang hasil JSON berdasarkan aturan di atas ditambah dengan instruksi spesifik pengguna ini!`
-  }
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...chatHistory
+  ]
 
   try {
-    const response: any = await $fetch(`${aiBaseUrl}/chat/completions`, {
+    const response = await fetch(`${aiBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${aiApiKey}`
       },
-      body: {
+      body: JSON.stringify({
         model: config.aiModel || 'kantor-gemini',
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant that only outputs valid JSON.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.2
-      }
+        messages,
+        temperature: 0.2,
+        stream: true
+      })
     })
 
-    let content = response?.choices?.[0]?.message?.content || '[]'
-    
-    // Clean up potential markdown blocks
-    content = content.replace(/^```(json)?\n?/i, '').replace(/\n?```$/i, '')
-    content = content.trim()
-
-    let parsed = []
-    try {
-      parsed = JSON.parse(content)
-    } catch (e) {
-      console.error('Failed to parse AI response:', content)
+    if (!response.ok) {
+      const errorText = await response.text()
       throw createError({
-        statusCode: 500,
-        message: 'AI response was not valid JSON'
+        statusCode: response.status,
+        message: 'Failed to fetch from AI server: ' + errorText
       })
     }
 
-    return {
-      success: true,
-      data: parsed
-    }
+    setHeader(event, 'Content-Type', 'text/event-stream')
+    setHeader(event, 'Cache-Control', 'no-cache')
+    setHeader(event, 'Connection', 'keep-alive')
+
+    return sendStream(event, response.body)
   } catch (error: any) {
     console.error('AI API Error:', error.message)
     throw createError({
