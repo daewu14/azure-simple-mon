@@ -65,10 +65,17 @@
     </UCard>
   </div>
 
-    <!-- Two Column Grid Container -->
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
 
-      <!-- Main Table -->
+    <!-- Split Container -->
+    <div 
+      ref="splitContainer" 
+      class="flex flex-col xl:flex-row items-stretch gap-6" 
+      :style="{ '--left-width': leftWidth + '%' }"
+      :class="isDragging ? 'select-none' : ''"
+    >
+      <!-- Left Pane -->
+      <div class="w-full xl:w-[var(--left-width)] xl:shrink-0">
+        <!-- Main Table -->
     <UCard :ui="{ background: 'bg-slate-900', ring: 'ring-1 ring-slate-800', body: { padding: 'p-0 sm:p-0' } }">
       <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none bg-slate-800/30 hover:bg-slate-800/50 transition-colors" @click="isMainTableExpanded = !isMainTableExpanded">
         <h2 class="text-lg font-bold text-white">Detail Product Backlog Item (PBI)</h2>
@@ -125,8 +132,18 @@
         Tidak ada PBI untuk target bulan ini.
       </div>
       </div>
-    </UCard>
 
+      <!-- Resizer (only visible on xl) -->
+      <div 
+        class="hidden xl:flex items-center justify-center w-6 -mx-3 cursor-col-resize z-10 group" 
+        @mousedown="startDrag"
+      >
+        <div class="w-1 h-12 bg-slate-700 group-hover:bg-primary-500 rounded-full transition-colors" :class="isDragging ? 'bg-primary-500' : ''"></div>
+      </div>
+
+      <!-- Right Pane -->
+      <div class="w-full xl:flex-grow xl:w-0">
+        <!-- Management Report -->
     <!-- Management Report -->
     <UCard v-if="managementRows.length" :ui="{ background: 'bg-slate-900', ring: 'ring-1 ring-slate-800', body: { padding: 'p-0 sm:p-0' } }">
       <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none bg-slate-800/30 hover:bg-slate-800/50 transition-colors" @click="isMgmtTableExpanded = !isMgmtTableExpanded">
@@ -185,6 +202,7 @@
       </UTable>
       </div>
     </UCard>
+      </div>
     </div>
 
     <div class="text-slate-500 text-xs text-right mt-6">Generated: {{ data?.generatedAt || '-' }}</div>
@@ -226,6 +244,34 @@ function resetAIReport() {
   aiGeneratedRows.value = null
 }
 
+
+
+const leftWidth = ref(50)
+const isDragging = ref(false)
+const splitContainer = ref<HTMLElement | null>(null)
+
+function startDrag() {
+  isDragging.value = true
+  document.addEventListener('mousemove', onDrag)
+  document.addEventListener('mouseup', stopDrag)
+}
+
+function onDrag(e: MouseEvent) {
+  if (!isDragging.value || !splitContainer.value) return
+  const rect = splitContainer.value.getBoundingClientRect()
+  const offsetX = e.clientX - rect.left
+  const newWidth = (offsetX / rect.width) * 100
+  if (newWidth > 20 && newWidth < 80) {
+    leftWidth.value = newWidth
+  }
+}
+
+function stopDrag() {
+  isDragging.value = false
+  document.removeEventListener('mousemove', onDrag)
+  document.removeEventListener('mouseup', stopDrag)
+  localStorage.setItem('pbiSplitWidth', String(leftWidth.value))
+}
 
 const { selectedTeam } = useTeam()
 
@@ -375,6 +421,9 @@ onMounted(() => {
 
   const storedMgmt = localStorage.getItem('pbiMgmtExpanded')
   if (storedMgmt !== null) isMgmtTableExpanded.value = storedMgmt === 'true'
+
+  const storedSplit = localStorage.getItem('pbiSplitWidth')
+  if (storedSplit !== null) leftWidth.value = Number(storedSplit)
 
   loadData()
 })
