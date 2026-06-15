@@ -69,7 +69,7 @@
     <!-- Split Container -->
     <div 
       ref="splitContainer" 
-      class="flex flex-col xl:flex-row items-stretch gap-6 xl:gap-0" 
+      class="flex flex-col xl:flex-row items-stretch gap-6 xl:gap-2" 
       :style="{ '--left-width': leftWidth + '%' }"
       :class="isDragging ? 'select-none' : ''"
     >
