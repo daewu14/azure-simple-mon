@@ -161,7 +161,7 @@
                 <UIcon :name="msg.role === 'user' ? 'i-heroicons-user' : 'i-heroicons-sparkles'" class="w-4 h-4" />
               </div>
               <div class="px-4 py-3 rounded-2xl max-w-[85%]" :class="msg.role === 'user' ? 'bg-primary-500/10 text-slate-200 border border-primary-500/20 rounded-tr-none' : 'bg-slate-800/50 text-slate-300 border border-slate-700/50 rounded-tl-none'">
-                <div class="whitespace-pre-wrap leading-relaxed" v-html="formatChatMessage(msg.content)"></div>
+                <div class="prose prose-sm dark:prose-invert prose-slate max-w-none leading-relaxed" v-html="formatChatMessage(msg.content)"></div>
                 <div v-if="msg.role === 'assistant' && !msg.content && aiLoading" class="flex items-center gap-1 mt-1 text-emerald-500">
                   <div class="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></div>
                   <div class="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
@@ -307,6 +307,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { marked } from 'marked'
+
+marked.setOptions({ breaks: true })
 
 useHead({ title: 'PBI Monthly Progress · Sprint Platform Dashboard' })
 
@@ -324,10 +327,16 @@ const chatInput = ref('')
 
 // Function to clean JSON block from chat message for display
 function formatChatMessage(content: string) {
+  if (!content) return ''
   // Strip out markdown JSON blocks from display text
   let text = content.replace(/```json[\s\S]*?```/g, '')
   text = text.replace(/\n{3,}/g, '\n\n') // clean up excessive newlines
-  return text.trim() || ''
+  text = text.trim() || ''
+  try {
+    return marked.parse(text)
+  } catch (e) {
+    return text
+  }
 }
 
 // Extract JSON block from AI response to update the table

@@ -16,6 +16,7 @@
   "dependencies": {
     "@nuxt/ui": "^3.0.0",
     "@popperjs/core": "^2.11.8",
+    "marked": "^18.0.5",
     "nuxt": "^3.17.0",
     "v-calendar": "^3.1.2"
   },
@@ -26,5 +27,8 @@
     "sprint",
     "monitor"
   ],
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/marked": "^5.0.2"
+  }
 }
