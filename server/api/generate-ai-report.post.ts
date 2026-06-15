@@ -56,7 +56,7 @@ ${JSON.stringify(rows.map((r: any) => ({ title: r.feature, state: r.state, targe
         'Authorization': `Bearer ${aiApiKey}`
       },
       body: {
-        model: 'kantor-gemini',
+        model: config.aiModel || 'kantor-gemini',
         messages: [
           { role: 'system', content: 'You are a helpful assistant that only outputs valid JSON.' },
           { role: 'user', content: prompt }

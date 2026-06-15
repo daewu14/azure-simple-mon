@@ -25,6 +25,7 @@ export default defineNuxtConfig({
     dashboardSessionSecret: process.env.DASHBOARD_SESSION_SECRET || '',
     aiBaseUrl: process.env.AI_BASE_URL || '',
     aiApiKey: process.env.AI_API_KEY || '',
+    aiModel: process.env.AI_MODEL || 'kantor-gemini',
     public: {
       defaultTeam: process.env.AZURE_DEVOPS_TEAM || 'Platform Squad',
     },
