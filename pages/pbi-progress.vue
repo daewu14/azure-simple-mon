@@ -528,7 +528,8 @@ const managementRows = computed(() => {
       id: row.id,
       feature: row.title,
       state: mgmtState,
-      target: formatDate(row.targetDate)
+      target: formatDate(row.targetDate),
+      description: row.description
     }
   })
 })

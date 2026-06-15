@@ -30,8 +30,8 @@ Anda HARUS selalu membalas dengan struktur berikut:
 2. Diikuti dengan data laporan manajemen dalam format JSON yang dibungkus dengan markdown \`\`\`json.
 
 Aturan Pembuatan Laporan JSON:
-1. Kelompokkan PBI yang memiliki tujuan yang sama ke dalam 1 "Feature" yang mudah dibaca oleh manajemen. Jangan sebutkan nomor PBI.
-2. Jika ada PBI yang berdiri sendiri, jadikan itu sebagai "Feature" dengan nama yang mudah dipahami.
+1. Baca dan analisa judul (title) serta deskripsi (description) dari setiap PBI. Kelompokkan PBI yang memiliki tujuan fungsional yang sama ke dalam 1 "Feature" yang merangkumnya dengan bahasa bisnis yang mudah dipahami oleh manajemen. Jangan sebutkan nomor PBI.
+2. Jika ada PBI yang berdiri sendiri dan tidak dapat dikelompokkan, jadikan itu sebagai "Feature" tersendiri.
 3. Tentukan "State" dari fitur tersebut:
    - "Released": Jika semua PBI dalam fitur tersebut sudah Released/Done.
    - "Blocking": Jika ada salah satu PBI yang berstatus Blocking (terlambat dari target).
@@ -47,7 +47,12 @@ Aturan Pembuatan Laporan JSON:
 ]
 
 Data PBI dasar yang akan dirangkum:
-${JSON.stringify(rows.map((r: any) => ({ title: r.feature, state: r.state, target: r.target })), null, 2)}
+${JSON.stringify(rows.map((r: any) => ({ 
+  title: r.feature, 
+  description: (r.description || '').replace(/<[^>]*>?/gm, '').trim().substring(0, 500), // Limit description to 500 chars to avoid token limit overflow 
+  state: r.state, 
+  target: r.target 
+})), null, 2)}
 `
 
   const messages = [
