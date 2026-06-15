@@ -517,53 +517,45 @@ export async function getPbiMonthly(month: number, year: number, teamName?: stri
   // Fetch all sprints for the team
   const sprints = await listSprints(t)
   
-  // Filter sprints that finish in the selected month & year
-  // month is 1-12
-  const targetSprints = sprints.filter(s => {
-    if (!s.finishDate) return false
-    const d = new Date(s.finishDate)
-    return d.getUTCFullYear() === year && d.getUTCMonth() + 1 === month
-  })
+  const startDate = new Date(Date.UTC(year, month - 1, 1)).toISOString().split('T')[0]
+  const endDate = new Date(Date.UTC(year, month, 1)).toISOString().split('T')[0]
 
   let pbis: Record<string, unknown>[] = []
 
-  if (targetSprints.length > 0) {
-    const sprintPaths = targetSprints.map(s => s.path)
-    const conditions = sprintPaths.map(p => `[System.IterationPath] UNDER '${wiqlQuote(p)}'`).join(' OR ')
+  const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject]='${wiqlQuote(project)}' AND [System.WorkItemType]='Product Backlog Item' AND [Microsoft.VSTS.Common.StateChangeDate] >= '${startDate}' AND [Microsoft.VSTS.Common.StateChangeDate] < '${endDate}' ORDER BY [System.Id]`
+  
+  const wiqlData = await adoFetch(`https://dev.azure.com/${org}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=${ver}`, { method: 'POST', body: JSON.stringify({ query: wiql }) })
+  const pbiIds = ((wiqlData.workItems as Record<string, number>[]) || []).map((i) => i.id)
+  
+  if (pbiIds.length > 0) {
+    const fields = ['System.Id', 'System.Title', 'System.State', 'System.IterationPath', 'System.AssignedTo', 'Microsoft.VSTS.Common.ClosedDate', 'System.Description', 'Microsoft.VSTS.Common.AcceptanceCriteria', 'Microsoft.VSTS.Common.StateChangeDate']
+    const pbiItems = await batchWorkItems(pbiIds, { fields })
     
-    const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject]='${wiqlQuote(project)}' AND [System.WorkItemType]='Product Backlog Item' AND (${conditions}) ORDER BY [System.Id]`
-    
-    const wiqlData = await adoFetch(`https://dev.azure.com/${org}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=${ver}`, { method: 'POST', body: JSON.stringify({ query: wiql }) })
-    const pbiIds = ((wiqlData.workItems as Record<string, number>[]) || []).map((i) => i.id)
-    
-    if (pbiIds.length > 0) {
-      const fields = ['System.Id', 'System.Title', 'System.State', 'System.IterationPath', 'System.AssignedTo', 'Microsoft.VSTS.Common.ClosedDate', 'System.Description', 'Microsoft.VSTS.Common.AcceptanceCriteria']
-      const pbiItems = await batchWorkItems(pbiIds, { fields })
-      
-      const sprintByPath = new Map(targetSprints.map(s => [s.path, s]))
+    const sprintByPath = new Map(sprints.map(s => [s.path, s]))
 
-      for (const item of pbiItems) {
-        const f = (item.fields as Record<string, unknown>) || {}
-        const ipath = String(f['System.IterationPath'] || '')
-        const sprint = sprintByPath.get(ipath)
-        
-        pbis.push({
-          id: item.id,
-          title: String(f['System.Title'] || ''),
-          state: String(f['System.State'] || ''),
-          assignedTo: assignedName(f['System.AssignedTo']),
-          iterationPath: ipath,
-          targetDate: sprint?.finishDate || null,
-          actualReleaseDate: f['Microsoft.VSTS.Common.ClosedDate'] || null,
-          description: String(f['System.Description'] || ''),
-          acceptanceCriteria: String(f['Microsoft.VSTS.Common.AcceptanceCriteria'] || ''),
-          url: `https://dev.azure.com/${org}/${encodeURIComponent(project)}/_workitems/edit/${item.id}`
-        })
-      }
+    for (const item of pbiItems) {
+      const f = (item.fields as Record<string, unknown>) || {}
+      const ipath = String(f['System.IterationPath'] || '')
+      const sprint = sprintByPath.get(ipath)
+      
+      pbis.push({
+        id: item.id,
+        title: String(f['System.Title'] || ''),
+        state: String(f['System.State'] || ''),
+        assignedTo: assignedName(f['System.AssignedTo']),
+        iterationPath: ipath,
+        targetDate: sprint?.finishDate || null,
+        actualReleaseDate: f['Microsoft.VSTS.Common.ClosedDate'] || null,
+        description: String(f['System.Description'] || ''),
+        acceptanceCriteria: String(f['Microsoft.VSTS.Common.AcceptanceCriteria'] || ''),
+        url: `https://dev.azure.com/${org}/${encodeURIComponent(project)}/_workitems/edit/${item.id}`
+      })
     }
   }
 
-  const value = { generatedAt: new Date().toISOString(), team: t, year, month, targetSprints: targetSprints.length, pbis }
+  const uniqueSprints = new Set(pbis.map(p => p.iterationPath).filter(Boolean))
+
+  const value = { generatedAt: new Date().toISOString(), team: t, year, month, targetSprints: uniqueSprints.size, pbis }
   cache.set(key, { at: Date.now(), value })
   return value
 }
