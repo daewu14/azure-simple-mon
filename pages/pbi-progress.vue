@@ -135,7 +135,7 @@
           <UButton
             v-if="!aiGeneratedRows"
             icon="i-heroicons-sparkles"
-            size="2xs"
+            size="xs"
             color="primary"
             variant="soft"
             label="Generate AI Report"
@@ -145,7 +145,7 @@
           <UButton
             v-else
             icon="i-heroicons-arrow-uturn-left"
-            size="2xs"
+            size="xs"
             color="red"
             variant="soft"
             label="Reset"
