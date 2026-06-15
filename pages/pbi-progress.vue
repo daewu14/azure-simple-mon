@@ -108,6 +108,34 @@
       </div>
     </UCard>
 
+    <!-- Management Report -->
+    <UCard v-if="managementRows.length" class="mb-4" :ui="{ body: { padding: 'p-0 sm:p-0' } }">
+      <div class="px-5 py-4 border-b border-slate-800">
+        <h2 class="text-xl font-bold text-primary-400">Progress {{ monthOptions.find(m => m.value === selectedMonth)?.label }} {{ selectedYear }}</h2>
+      </div>
+      <UTable
+        :data="managementRows"
+        :columns="managementColumns"
+        class="w-full whitespace-normal"
+      >
+        <template #feature-cell="{ row }">
+          <span class="text-sm text-slate-200">{{ row.original.feature }}</span>
+        </template>
+        <template #state-cell="{ row }">
+          <UBadge 
+            :color="row.original.state === 'Released' ? 'emerald' : row.original.state === 'Blocking' ? 'red' : 'blue'" 
+            variant="soft" 
+            size="xs"
+          >
+            {{ row.original.state }}
+          </UBadge>
+        </template>
+        <template #target-cell="{ row }">
+          <span class="text-sm text-slate-300">{{ row.original.target }}</span>
+        </template>
+      </UTable>
+    </UCard>
+
     <div class="text-slate-600 text-xs text-right mt-3">Generated: {{ data?.generatedAt || '-' }}</div>
   </div>
 </template>
@@ -154,6 +182,34 @@ const columns = [
   { accessorKey: 'targetDate', header: 'Target (Sprint End)' },
   { accessorKey: 'actualReleaseDate', header: 'Actual Release' }
 ]
+
+const managementColumns = [
+  { accessorKey: 'feature', header: 'Feature' },
+  { accessorKey: 'state', header: 'State' },
+  { accessorKey: 'target', header: 'Target' }
+]
+
+const managementRows = computed(() => {
+  return tableRows.value.map(row => {
+    let mgmtState = 'Processing'
+    const s = String(row.state || '').toLowerCase()
+    
+    if (['done', 'closed', 'released'].includes(s)) {
+      mgmtState = 'Released'
+    } else if (row.isPastDue) {
+      mgmtState = 'Blocking'
+    } else {
+      mgmtState = 'Processing'
+    }
+
+    return {
+      id: row.id,
+      feature: row.title,
+      state: mgmtState,
+      target: formatDate(row.targetDate)
+    }
+  })
+})
 
 const tableRows = computed(() => {
   if (!data.value || !data.value.pbis) return []
