@@ -1,7 +1,8 @@
 <template>
   <div>
     <!-- Hero -->
-    <UCard class="mb-4" :ui="{ body: { padding: 'p-5 sm:p-5' } }">
+    <UCard class="mb-6 relative overflow-hidden" :ui="{ background: 'bg-gradient-to-br from-slate-900 via-slate-900 to-primary-950/20', ring: 'ring-1 ring-slate-800', body: { padding: 'p-6 sm:p-6' } }">
+      <div class="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div class="flex items-start justify-between gap-4 cursor-pointer select-none" @click="isHeroExpanded = !isHeroExpanded">
         <div>
           <div class="text-primary-500 text-[10px] font-bold uppercase tracking-widest mb-1.5">Azure DevOps · Product Delivery</div>
@@ -29,7 +30,8 @@
     </UCard>
 
     <!-- Toolbar -->
-    <UCard class="mb-4" :ui="{ body: { padding: 'px-4 py-3 sm:px-4 sm:py-3' } }">
+    <div class="sticky top-4 z-10 mb-6">
+    <UCard :ui="{ background: 'bg-slate-900/80 backdrop-blur-md', ring: 'ring-1 ring-slate-800/60 shadow-lg', body: { padding: 'px-4 py-3 sm:px-5 sm:py-4' } }">
       <div class="flex items-center gap-3 flex-wrap">
         <div class="flex items-center gap-2 shrink-0">
           <span class="text-slate-500 text-xs font-semibold whitespace-nowrap">Month</span>
@@ -61,10 +63,14 @@
         </div>
       </div>
     </UCard>
+  </div>
 
-    <!-- Table -->
-    <UCard class="mb-4" :ui="{ body: { padding: 'p-0 sm:p-0' } }">
-      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none bg-slate-900/50" @click="isMainTableExpanded = !isMainTableExpanded">
+    <!-- Two Column Grid Container -->
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+
+      <!-- Main Table -->
+    <UCard :ui="{ background: 'bg-slate-900', ring: 'ring-1 ring-slate-800', body: { padding: 'p-0 sm:p-0' } }">
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none bg-slate-800/30 hover:bg-slate-800/50 transition-colors" @click="isMainTableExpanded = !isMainTableExpanded">
         <h2 class="text-lg font-bold text-white">Detail Product Backlog Item (PBI)</h2>
         <UButton
           variant="ghost"
@@ -122,8 +128,8 @@
     </UCard>
 
     <!-- Management Report -->
-    <UCard v-if="managementRows.length" class="mb-4" :ui="{ body: { padding: 'p-0 sm:p-0' } }">
-      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none bg-slate-900/50" @click="isMgmtTableExpanded = !isMgmtTableExpanded">
+    <UCard v-if="managementRows.length" :ui="{ background: 'bg-slate-900', ring: 'ring-1 ring-slate-800', body: { padding: 'p-0 sm:p-0' } }">
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none bg-slate-800/30 hover:bg-slate-800/50 transition-colors" @click="isMgmtTableExpanded = !isMgmtTableExpanded">
         <h2 class="text-lg font-bold text-primary-400">Progress {{ monthOptions.find(m => m.value === selectedMonth)?.label }} {{ selectedYear }} <span v-if="aiGeneratedRows" class="text-xs ml-2 text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-full">AI Generated</span></h2>
         <div class="flex items-center gap-2">
           <UButton
@@ -179,8 +185,9 @@
       </UTable>
       </div>
     </UCard>
+    </div>
 
-    <div class="text-slate-600 text-xs text-right mt-3">Generated: {{ data?.generatedAt || '-' }}</div>
+    <div class="text-slate-500 text-xs text-right mt-6">Generated: {{ data?.generatedAt || '-' }}</div>
   </div>
 </template>
 
