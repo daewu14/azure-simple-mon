@@ -124,7 +124,7 @@ export async function getOpiData(customStart?: string, customEnd?: string, sprin
     }
 
     // Fetch all child tasks
-    const fields = ['System.Id','System.WorkItemType','System.Title','System.State','System.AssignedTo','System.Parent']
+    const fields = ['System.Id','System.WorkItemType','System.Title','System.State','System.AssignedTo','System.Parent','Microsoft.VSTS.Common.Priority','Microsoft.VSTS.Common.StateChangeDate','Microsoft.VSTS.Common.ActivatedDate','Microsoft.VSTS.Common.ClosedDate']
     const childItems = childIds.length ? await batchWorkItems([...new Set(childIds)], { fields, project }) : []
     const childById = new Map(childItems.map((i) => [i.id as number, i]))
 
@@ -142,11 +142,50 @@ export async function getOpiData(customStart?: string, customEnd?: string, sprin
         const cState = stateName(cf['System.State'])
         totalTasks++
         if (['Closed', 'Done', 'Resolved'].includes(cState)) completedTasks++
+
+        const priority = cf['Microsoft.VSTS.Common.Priority'] as number || 4
+        let severity = 'LOW'
+        let severityText = 'Masuk sprint'
+        if (priority === 1) {
+          severity = 'CRITICAL'
+          severityText = '2 jam'
+        } else if (priority === 2) {
+          severity = 'HIGH'
+          severityText = '2 jam'
+        } else if (priority === 3) {
+          severity = 'MEDIUM'
+          severityText = '2 hari'
+        }
+
+        let slaMet: boolean | null = null
+        const activatedDate = cf['Microsoft.VSTS.Common.ActivatedDate'] as string | undefined
+        const closedDate = cf['Microsoft.VSTS.Common.ClosedDate'] as string | undefined
+        
+        if (['Closed', 'Done', 'Resolved'].includes(cState) && activatedDate && closedDate) {
+          const actMs = new Date(activatedDate).getTime()
+          const clsMs = new Date(closedDate).getTime()
+          const durationHour = (clsMs - actMs) / (1000 * 60 * 60)
+          
+          if (priority === 1 || priority === 2) {
+            slaMet = durationHour <= 2
+          } else if (priority === 3) {
+            slaMet = durationHour <= 48
+          } else {
+            slaMet = true // low priority always meets SLA or no strict SLA
+          }
+        }
+
         return {
           id: c!.id,
           title: String(cf['System.Title'] || ''),
           state: cState,
           assignedTo: assignedName(cf['System.AssignedTo']),
+          priority,
+          severity,
+          severityText,
+          slaMet,
+          activatedDate,
+          closedDate,
           url: `https://dev.azure.com/${org}/${encodeURIComponent(project)}/_workitems/edit/${c!.id}`,
           type: String(cf['System.WorkItemType'] || 'Task'),
         }

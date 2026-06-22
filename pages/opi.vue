@@ -115,6 +115,7 @@
               <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">Type</th>
               <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">Title</th>
               <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">State</th>
+              <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">Severity</th>
               <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">Assigned To</th>
               <th class="px-3 py-2 text-left text-slate-400 text-[10px] font-bold uppercase tracking-wide">Tasks</th>
             </tr>
@@ -135,6 +136,7 @@
                 <td class="px-3 py-2 text-slate-400 text-xs">{{ story.type }}</td>
                 <td class="px-3 py-2 text-slate-200 max-w-sm">{{ story.title }}</td>
                 <td class="px-3 py-2 w-32"><StateBadge :state="story.state" /></td>
+                <td class="px-3 py-2 w-32"></td>
                 <td class="px-3 py-2 text-slate-300 text-xs w-48">{{ story.assignedTo || '-' }}</td>
                 <td class="px-3 py-2 text-xs w-20">
                   <UBadge color="neutral" variant="soft">{{ story.tasks.length }}</UBadge>
@@ -142,7 +144,7 @@
               </tr>
               <!-- Child Tasks (Expanded) -->
               <tr v-if="expandedStories.has(story.id)" class="bg-slate-900/40 border-b border-slate-800/60">
-                <td colspan="7" class="p-0">
+                <td colspan="8" class="p-0">
                   <div class="px-8 py-3 bg-slate-950/30">
                     <table class="w-full text-xs">
                       <tbody>
@@ -156,6 +158,17 @@
                           </td>
                           <td class="px-3 py-2 text-slate-300">{{ task.title }}</td>
                           <td class="px-3 py-2 w-32"><StateBadge :state="task.state" class="scale-90 origin-left" /></td>
+                          <td class="px-3 py-2 w-40">
+                            <div class="flex flex-col gap-1 items-start">
+                              <UBadge :color="task.severity === 'CRITICAL' ? 'red' : task.severity === 'HIGH' ? 'orange' : task.severity === 'MEDIUM' ? 'yellow' : 'neutral'" variant="soft" size="xs">{{ task.severity || 'LOW' }}</UBadge>
+                              <div class="flex flex-col gap-0.5 mt-0.5">
+                                <span class="text-[9px] text-slate-400 leading-tight whitespace-nowrap">{{ task.severityText || 'Masuk sprint' }}</span>
+                                <span v-if="task.slaMet !== null" class="text-[9px] font-medium leading-tight whitespace-nowrap" :class="task.slaMet ? 'text-emerald-400' : 'text-red-400'">
+                                  {{ task.slaMet ? '✓ SLA Met' : '✗ SLA Missed' }}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
                           <td class="px-3 py-2 w-48 text-slate-400">{{ task.assignedTo || '-' }}</td>
                         </tr>
                       </tbody>
