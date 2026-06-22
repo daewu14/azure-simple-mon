@@ -143,7 +143,7 @@ export async function getOpiData(customStart?: string, customEnd?: string, sprin
         totalTasks++
         if (['Closed', 'Done', 'Resolved'].includes(cState)) completedTasks++
 
-        const priority = cf['Microsoft.VSTS.Common.Priority'] as number || 4
+        const priority = f['Microsoft.VSTS.Common.Priority'] as number || 4
         let severity = 'LOW'
         let severityText = 'Masuk sprint'
         if (priority === 1) {
