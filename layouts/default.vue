@@ -97,6 +97,7 @@ const navLinks = computed(() => [
   { label: 'Progress Minggu Lalu', icon: 'i-heroicons-calendar-days', to: { path: '/progress', query: teamQuery.value } },
   { label: 'OPI Board', icon: 'i-heroicons-clipboard-document-list', to: { path: '/opi', query: teamQuery.value } },
   { label: 'PBI Monthly Progress', icon: 'i-heroicons-calendar-days', to: { path: '/pbi-progress', query: teamQuery.value } },
+  { label: 'Azure Query Report', icon: 'i-heroicons-funnel', to: { path: '/azure-query', query: teamQuery.value } },
 ])
 
 function onTeamChange() {
