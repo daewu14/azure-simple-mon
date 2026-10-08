@@ -26,6 +26,7 @@ export default defineNuxtConfig({
     aiBaseUrl: process.env.AI_BASE_URL || '',
     aiApiKey: process.env.AI_API_KEY || '',
     aiModel: process.env.AI_MODEL || 'kantor-gemini',
+    azureDevOpsDefaultQueryId: process.env.AZURE_DEVOPS_DEFAULT_QUERY_ID || 'aeb8f801-fc84-47ba-8b8c-debbc3066b6b',
     public: {
       defaultTeam: process.env.AZURE_DEVOPS_TEAM || 'Platform Squad',
     },

@@ -10,6 +10,7 @@ Dashboard monitoring Azure DevOps Platform Sprint — dibangun dengan **Nuxt 3**
 | PBI Ready Release | `/dashboard` | PBI yang siap release, expandable child task |
 | Timeline Gantt Chart | `/timeline` | History state task: In Progress → Released |
 | Progress Minggu Lalu | `/progress` | Task In Progress minggu lalu + durasi jam kerja |
+| Azure Query | `/azure-query` | Work item dari saved query Azure DevOps |
 | Login | `/login` | Session-based auth (SHA-256 + signed cookie) |
 
 ## Tech Stack
@@ -81,6 +82,7 @@ Dev server default: **http://localhost:5762**
 | `AZURE_DEVOPS_TEAM` | `Platform Squad` | Default team |
 | `AZURE_DEVOPS_TEAMS` | — | Comma-separated daftar team (opsional) |
 | `AZURE_DEVOPS_PAT` | — | Personal Access Token Azure DevOps |
+| `AZURE_DEVOPS_DEFAULT_QUERY_ID` | `aeb8f801-fc84-47ba-8b8c-debbc3066b6b` | Saved query default untuk menu Azure Query |
 | `DASHBOARD_AUTH_USERNAME` | `daewubintara@kiriminaja.com` | Username login |
 | `DASHBOARD_AUTH_SALT` | — | Salt untuk password hash |
 | `DASHBOARD_AUTH_PASSWORD_SHA256` | — | SHA-256 hash dari `salt:password` |

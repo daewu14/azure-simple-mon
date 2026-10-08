@@ -6,7 +6,7 @@ export default defineEventHandler((event) => {
   // Skip public routes
   if (path === '/login' || path === '/api/auth/login' || path === '/api/auth/logout' || path === '/healthz') return
 
-  const protectedPages = ['/', '/dashboard', '/timeline', '/progress']
+  const protectedPages = ['/', '/dashboard', '/timeline', '/progress', '/opi', '/pbi-progress', '/azure-query', '/azure-query-summary']
   const isPage = protectedPages.includes(path)
   const isApi = path.startsWith('/api/')
 

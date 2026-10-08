@@ -69,6 +69,165 @@ async function batchWorkItems(ids: number[], opts: { fields?: string[]; expand?:
   return result as Record<string, unknown>[]
 }
 
+const savedQueryFields = [
+  'System.Id',
+  'System.WorkItemType',
+  'System.Title',
+  'System.State',
+  'System.AssignedTo',
+  'System.IterationPath',
+  'System.AreaPath',
+  'System.Tags',
+  'Microsoft.VSTS.Common.Priority',
+  'Microsoft.VSTS.Common.ActivatedDate',
+  'Microsoft.VSTS.Common.ResolvedDate',
+  'Microsoft.VSTS.Common.ClosedDate',
+  'Microsoft.VSTS.Scheduling.RemainingWork',
+  'System.CreatedDate',
+  'System.ChangedDate',
+]
+
+function workItemUrl(org: string, project: string, id: number) {
+  return `https://dev.azure.com/${org}/${encodeURIComponent(project)}/_workitems/edit/${id}`
+}
+
+export const savedQueryAssignees = [
+  'Rizqi Sarasajati',
+  'Puji Juli Hervianto',
+  'Meutya',
+] as const
+
+type SavedQueryOptions = {
+  activatedStart?: string
+  activatedEnd?: string
+  assignedTo?: string
+}
+
+function overrideSavedQueryFilters(wiql: string, opts: SavedQueryOptions) {
+  let next = wiql
+  const hasLinkQuery = /from\s+WorkItemLinks/i.test(wiql)
+  const prefix = hasLinkQuery ? 'Source.' : ''
+  const activatedDateField = `${prefix}[Microsoft.VSTS.Common.ActivatedDate]`
+  const activatedDateRegex = hasLinkQuery
+    ? String.raw`Source\.\[Microsoft\.VSTS\.Common\.ActivatedDate\]`
+    : String.raw`\[Microsoft\.VSTS\.Common\.ActivatedDate\]`
+
+  if (opts.activatedStart) {
+    const value = opts.activatedStart
+    const geRegex = new RegExp(`(${activatedDateRegex}\\s*>=\\s*)'[^']*'`, 'i')
+    next = geRegex.test(next)
+      ? next.replace(geRegex, `$1'${value}'`)
+      : next.replace(/\bwhere\b/i, `where ${activatedDateField} >= '${value}' and`)
+  }
+
+  if (opts.activatedEnd) {
+    const value = opts.activatedEnd
+    const leRegex = new RegExp(`(${activatedDateRegex}\\s*<=\\s*)'[^']*'`, 'i')
+    next = leRegex.test(next)
+      ? next.replace(leRegex, `$1'${value}'`)
+      : next.replace(/\bwhere\b/i, `where ${activatedDateField} <= '${value}' and`)
+  }
+
+  if (opts.assignedTo) {
+    const assignedToField = `${prefix}[System.AssignedTo]`
+    const assignedToRegex = hasLinkQuery
+      ? String.raw`Source\.\[System\.AssignedTo\]`
+      : String.raw`\[System\.AssignedTo\]`
+    const value = wiqlQuote(opts.assignedTo)
+    const equalsRegex = new RegExp(`(${assignedToRegex}\\s*=\\s*)'[^']*(?:''[^']*)*'`, 'i')
+    next = equalsRegex.test(next)
+      ? next.replace(equalsRegex, `$1'${value}'`)
+      : next.replace(/\bwhere\b/i, `where ${assignedToField} = '${value}' and`)
+  }
+
+  return next
+}
+
+export async function getSavedQueryWorkItems(queryId: string, opts: SavedQueryOptions = {}) {
+  const { org, project, team, ver } = cfg()
+  const normalizedQueryId = String(queryId || '').trim()
+  const key = `saved_query:${project}:${normalizedQueryId}:${opts.activatedStart || ''}:${opts.activatedEnd || ''}:${opts.assignedTo || ''}`
+  const cached = cache.get(key)
+  if (cached && Date.now() - cached.at < cacheMs) return cached.value
+
+  const queryUrl = `https://dev.azure.com/${org}/${encodeURIComponent(project)}/_apis/wit/queries/${encodeURIComponent(normalizedQueryId)}?$expand=wiql&api-version=${ver}`
+  const [queryInfo, sprints] = await Promise.all([
+    adoFetch(queryUrl),
+    listSprints(team, project),
+  ])
+  const sprintByPath = new Map(sprints.map((s) => [String(s.path || ''), s]))
+  const wiql = String(queryInfo.wiql || '').trim()
+  if (!wiql) throw new Error('Azure DevOps query tidak memiliki WIQL atau tidak bisa diakses.')
+
+  const defaultAssignedTo = savedQueryAssignees[0]
+  const effectiveOptions = { ...opts, assignedTo: (opts.assignedTo || defaultAssignedTo).trim() }
+  const effectiveWiql = overrideSavedQueryFilters(wiql, effectiveOptions)
+  const wiqlData = await adoFetch(`https://dev.azure.com/${org}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=${ver}`, { method: 'POST', body: JSON.stringify({ query: effectiveWiql }) })
+  const idSet = new Set<number>()
+  for (const item of ((wiqlData.workItems as Record<string, number>[]) || [])) {
+    if (Number.isFinite(item.id)) idSet.add(item.id)
+  }
+  for (const rel of ((wiqlData.workItemRelations as Record<string, { id?: number }>[]) || [])) {
+    const sourceId = rel.source?.id
+    const targetId = rel.target?.id
+    if (Number.isFinite(sourceId)) idSet.add(sourceId as number)
+    if (Number.isFinite(targetId)) idSet.add(targetId as number)
+  }
+
+  const ids = [...idSet]
+  const workItems = ids.length ? await batchWorkItems(ids, { fields: savedQueryFields, project }) : []
+  const order = new Map(ids.map((id, index) => [id, index]))
+  const items = workItems
+    .sort((a, b) => (order.get(a.id as number) ?? 0) - (order.get(b.id as number) ?? 0))
+    .map((item) => {
+      const f = (item.fields as Record<string, unknown>) || {}
+      const id = Number(item.id)
+      const iterationPath = String(f['System.IterationPath'] || '')
+      const sprint = sprintByPath.get(iterationPath)
+      return {
+        id,
+        type: String(f['System.WorkItemType'] || ''),
+        title: String(f['System.Title'] || ''),
+        state: stateName(f['System.State']),
+        assignedTo: assignedName(f['System.AssignedTo']),
+        iterationPath,
+        areaPath: String(f['System.AreaPath'] || ''),
+        tags: String(f['System.Tags'] || ''),
+        priority: f['Microsoft.VSTS.Common.Priority'] ?? null,
+        activatedDate: f['Microsoft.VSTS.Common.ActivatedDate'] || null,
+        resolvedDate: f['Microsoft.VSTS.Common.ResolvedDate'] || null,
+        closedDate: f['Microsoft.VSTS.Common.ClosedDate'] || null,
+        remainingWork: f['Microsoft.VSTS.Scheduling.RemainingWork'] ?? null,
+        sprintStartDate: sprint?.startDate || null,
+        sprintFinishDate: sprint?.finishDate || null,
+        createdDate: f['System.CreatedDate'] || null,
+        changedDate: f['System.ChangedDate'] || null,
+        url: workItemUrl(org, project, id),
+      }
+    })
+
+  const value = {
+    generatedAt: new Date().toISOString(),
+    org,
+    project,
+    queryId: normalizedQueryId,
+    queryName: String(queryInfo.name || 'Azure DevOps Query'),
+    queryPath: String(queryInfo.path || ''),
+    queryUrl: String((queryInfo._links as Record<string, Record<string, string>> | undefined)?.html?.href || `https://dev.azure.com/${org}/${encodeURIComponent(project)}/_queries/query/${normalizedQueryId}/`),
+    activatedDateOverride: {
+      start: opts.activatedStart || '',
+      end: opts.activatedEnd || '',
+    },
+    defaultAssignedTo,
+    assignedToOverride: effectiveOptions.assignedTo,
+    assignedToOptions: [...savedQueryAssignees],
+    count: items.length,
+    items,
+  }
+  cache.set(key, { at: Date.now(), value })
+  return value
+}
+
 export async function getOpiData(customStart?: string, customEnd?: string, sprintPath?: string) {
   const { org, ver } = cfg()
   const project = 'OPI Board'
@@ -543,6 +702,14 @@ export async function safeLastWeekProgress(sprintPath: string, teamName?: string
     console.error(e)
     const range = prevWeekRange()
     return { generatedAt: new Date().toISOString(), team: normalizeTeamName(teamName), sprintPath, range: { start: range.startIso, end: range.endIso, label: range.label }, items: [], pbiGroups: [], stats: { totalTasksScanned: 0, inProgressTasks: 0, stillInProgress: 0, totalHours: 0, avgHours: 0, assignees: 0 }, warning: (e as Error).message }
+  }
+}
+export async function safeSavedQueryWorkItems(queryId: string, opts: SavedQueryOptions = {}) {
+  try { return await getSavedQueryWorkItems(queryId, opts) } catch (e: unknown) {
+    console.error(e)
+    const defaultAssignedTo = savedQueryAssignees[0]
+    const assignedTo = opts.assignedTo || defaultAssignedTo
+    return { generatedAt: new Date().toISOString(), queryId, queryName: 'Azure DevOps Query', queryPath: '', queryUrl: '', activatedDateOverride: { start: opts.activatedStart || '', end: opts.activatedEnd || '' }, defaultAssignedTo, assignedToOverride: assignedTo, assignedToOptions: [...savedQueryAssignees], count: 0, items: [], warning: (e as Error).message }
   }
 }
 
