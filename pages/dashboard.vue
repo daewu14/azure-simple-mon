@@ -151,8 +151,7 @@
 useHead({ title: 'PBI Ready Release · Sprint Platform Dashboard' })
 
 const { selectedTeam } = useTeam()
-const config = useRuntimeConfig()
-const baseWorkItemUrl = `https://dev.azure.com/${config.public.defaultTeam ? '' : ''}` // set via API
+const baseWorkItemUrl = 'https://dev.azure.com/KiriminAja2026/Product%20Delivery/_workitems/edit/'
 
 const sprints = ref<{ name: string; path: string; timeFrame: string }[]>([])
 const selectedSprintPath = ref('')
@@ -223,26 +222,88 @@ async function loadData() {
 
 function reset() { searchTerm.value = ''; reasonFilter.value = 'all' }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function sortingDate() {
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Asia/Jakarta',
+  }).format(new Date())
+}
+
+function copyRichTextFallback(html: string) {
+  const container = document.createElement('div')
+  container.innerHTML = html
+  container.style.position = 'fixed'
+  container.style.left = '-9999px'
+  container.style.top = '0'
+  document.body.appendChild(container)
+
+  const selection = window.getSelection()
+  const range = document.createRange()
+  range.selectNodeContents(container)
+  selection?.removeAllRanges()
+  selection?.addRange(range)
+  const success = document.execCommand('copy')
+  selection?.removeAllRanges()
+  container.remove()
+
+  if (!success) throw new Error('Fallback copy failed')
+}
+
 async function copyPbis() {
-  const ado = `https://dev.azure.com/KiriminAja2026/Product%20Delivery/_workitems/edit/`
-  const lines = ['PBI Ready Release', ...filteredPbis.value.map((p, i) => `${i + 1}. Product backlog Item ${p.pbiId}:(${ado}${p.pbiId}) ${p.pbiTitle}`)]
-  const text = lines.join('\n')
+  const title = `PBI SORTING ${sortingDate()}`
+  const rows = filteredPbis.value.map((pbi, index) => {
+    const id = String(pbi.pbiId ?? '').trim()
+    const url = `${baseWorkItemUrl}${encodeURIComponent(id)}`
+    const pbiTitle = String(pbi.pbiTitle ?? '-').replace(/\s+/g, ' ').trim()
+    return { number: index + 1, id, url, title: pbiTitle }
+  })
+  const text = [
+    title,
+    '',
+    'No\tTicket',
+    ...rows.map(row => `${row.number}\tProduct Backlog Item ${row.id}: ${row.title} (${row.url})`),
+  ].join('\n')
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #f5f5f5; background-color: #252525; padding: 8px;">
+      <div style="font-size: 24pt; font-weight: 700; margin-bottom: 36px;">${escapeHtml(title)}</div>
+      <table style="border-collapse: collapse; width: 100%; font-size: 11pt;">
+        <thead>
+          <tr>
+            <td style="border: 1px solid #696969; padding: 3px 10px; text-align: left; font-weight: 700;">No</td>
+            <td style="border: 1px solid #696969; padding: 3px 10px; text-align: left; font-weight: 700;">Ticket</td>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(row => `
+            <tr>
+              <td style="border: 1px solid #696969; padding: 3px 10px; vertical-align: top;">${row.number}</td>
+              <td style="border: 1px solid #696969; padding: 3px 10px; vertical-align: top;"><a href="${escapeHtml(row.url)}" style="color: #8588ff; text-decoration: underline;">Product Backlog Item ${escapeHtml(row.id)}</a>: ${escapeHtml(row.title)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `
 
   try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text)
+    if (navigator.clipboard?.write && window.ClipboardItem && window.isSecureContext) {
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([text], { type: 'text/plain' }),
+      })])
     } else {
-      // Fallback for non-secure contexts (e.g. HTTP network IP)
-      const textArea = document.createElement('textarea')
-      textArea.value = text
-      textArea.style.position = 'fixed'
-      textArea.style.opacity = '0'
-      document.body.appendChild(textArea)
-      textArea.focus()
-      textArea.select()
-      const success = document.execCommand('copy')
-      textArea.remove()
-      if (!success) throw new Error('Fallback copy failed')
+      copyRichTextFallback(html)
     }
     copying.value = true
     setTimeout(() => { copying.value = false }, 2000)
